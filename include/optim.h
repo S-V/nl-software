@@ -25,7 +25,7 @@
 
   - Вход:
     - \f$n\f$ - число переменных функции \f$f(x)\f$
-    - \f$func\f$ - указатель на функцию, вычисляющую \f$f(x)\f$
+    - \f$fun\f$ - указатель на функцию, вычисляющую \f$f(x)\f$
     - \f$x0\f$ - массив длины \f$n\f$, при \f$initsimplex = 0\f$ содержащий 
         координаты начального приближения 
     - \f$initsimplex\f$ - флаг, показывающий, передается ли функции одно начальное приближение
@@ -51,13 +51,13 @@
         или число итераций достигло \f$maxiter\f$
     - \f$nfun\f$ - колчество вычислений значений функции
     - \f$niter\f$ - число выполненных итераций
-  - Рабочие массивы:
-    - \f$xbar\f$, \f$xr\f$, \f$xe\f$, \f$xc\f$ - массивы длины \f$n\f$
+  - Рабочий массив:
+    - \f$work\f$ - массив длины \f$4n\f$
 */
 extern 
 void opt_nelder_mead(
+  double (*fun)(double*),
   size_t n,  
-  double (*func)(double*),
   double *x0,
   double *f0,
   int initsimplex,
@@ -67,8 +67,5 @@ void opt_nelder_mead(
   int maxfun, int maxiter,
   int *rc,
   int *nfun, int *niter,
-  double *xbar,
-  double *xr,
-  double *xe,
-  double *xc);
+  double *work);
 #endif
