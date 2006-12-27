@@ -3,8 +3,8 @@
 #include "optim.h"
 
 void opt_nelder_mead(
+  double (*fun)(double*),
   size_t n,  
-  double (*func)(double*),
   double *x0,
   double *f0,
   int initsimplex,
@@ -14,13 +14,11 @@ void opt_nelder_mead(
   int maxfun, int maxiter,
   int *rc,
   int *nfun, int *niter,
-  double *xbar,
-  double *xr,
-  double *xe,
-  double *xc)
+  double *work)
 {
   double fr, fe, fc;
   double d, diam;
+  double *xbar, *xr, *xe, *xc;
   size_t imin, imax, imax2; /* the indices of the highest (worst), 
     next-highest, and lowest (best) vertices of the simplex */
   size_t i, j;
@@ -31,6 +29,11 @@ void opt_nelder_mead(
   const double delta = 0.5;
   const double rel_init_simplex_quota = 0.05; /* Params for the initial simplex */
   const double abs_init_simplex_quota = 0.00025;
+
+  xbar = work;
+  xr = work + n;
+  xe = work + 2*n;
+  xc = work + 3*n;
 
   /* Compute an initial simplex */
 
@@ -50,7 +53,7 @@ void opt_nelder_mead(
   }
 
   for (i = 0; i <= n; i++)
-    f[i] = (*func)(x[i]);
+    f[i] = (*fun)(x[i]);
   
   *rc = 1;
   *nfun = n + 1;
@@ -122,7 +125,7 @@ void opt_nelder_mead(
     for (j = 0; j < n; j++)
       xr[j] = (1 + alpha) * xbar[j] - alpha * x[imax][j];
 
-    fr = (*func)(xr);
+    fr = (*fun)(xr);
     (*nfun)++;
     
     if (fr < f[imin])
@@ -132,7 +135,7 @@ void opt_nelder_mead(
       for (j = 0; j < n; j++)
         xe[j] = beta * xr[j] + (1 - beta) * xbar[j];
 
-      fe = (*func)(xe);
+      fe = (*fun)(xe);
       (*nfun)++;
 
       if (fe < f[imin]) /* fe < f[imin] или fr ??? */
@@ -179,7 +182,7 @@ void opt_nelder_mead(
             xc[j] = gamma * x[imax][j] + (1 - gamma) * xbar[j];
         }
 
-        fc = (*func)(xc);
+        fc = (*fun)(xc);
         (*nfun)++;
   
         if (fc < fr && fc < f[imax])  /* ... corresponingly */
@@ -197,7 +200,7 @@ void opt_nelder_mead(
             {
               for (j = 0; j < n; j++)
                 x[i][j] = x[imin][j] + delta * (x[i][j] - x[imin][j]);
-              f[i] = (*func)(x[i]);
+              f[i] = (*fun)(x[i]);
             }
           (*nfun) += n;
         }

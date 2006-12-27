@@ -9,7 +9,7 @@
 #include <math.h>
 #include "nl.h"
 
-double func(double *x)
+double fun(double *x)
 {
 
   double tmp1, tmp2;
@@ -17,13 +17,13 @@ double func(double *x)
   tmp1 = x[1] - x[0]*x[0];
   tmp2 = 1 - x[0];
 
-  return tmp1 * tmp1 + tmp2 * tmp2;
+  return tmp1*tmp1 + tmp2*tmp2;
 }
 
 int main(void)
 {
   size_t n;
-  double *x0, **x, *f, *xbar, *xr, *xe, *xc;
+  double *x0, **x, *f, *work;
   double f0;
   double tolf, tolx;
   int maxfun, maxiter, rc, nfun, niter;
@@ -33,10 +33,7 @@ int main(void)
   x0 = nl_dvector_create(n);
   x = nl_dmatrix_create(n + 1, n);
   f = nl_dvector_create(n + 1);
-  xbar = nl_dvector_create(n);
-  xr = nl_dvector_create(n);
-  xe = nl_dvector_create(n);
-  xc = nl_dvector_create(n);
+  work = nl_dvector_create(4*n);
 
   x0[0] = -1.2;
   x0[1] = 1;
@@ -45,8 +42,8 @@ int main(void)
   maxfun = 200;
   maxiter = 50;
 
-  opt_nelder_mead(n, func, x0, &f0, 0, x, f, tolf, tolx, maxfun, maxiter, 
-    &rc, &nfun, &niter, xbar, xr, xe, xc);
+  opt_nelder_mead(fun, n, x0, &f0, 0, x, f, tolf, tolx, maxfun, maxiter, 
+    &rc, &nfun, &niter, work);
 
   if (rc)
   {
@@ -71,10 +68,7 @@ int main(void)
   nl_dvector_free(x0);
   nl_dmatrix_free(x, n + 1);
   nl_dvector_free(f);
-  nl_dvector_free(xbar);
-  nl_dvector_free(xr);
-  nl_dvector_free(xe);
-  nl_dvector_free(xc);
+  nl_dvector_free(work);
 
-  return 0;
+  return 1;
 }
