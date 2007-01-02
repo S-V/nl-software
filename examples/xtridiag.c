@@ -9,9 +9,9 @@
 int main()
 {
   size_t n = 3;
-  double a[] = {0, 1, 2};
+  double a[] = {1, 2};
   double d[] = {3, 4, 5};
-  double c[] = {6, 7, 0};
+  double c[] = {6, 7};
   double b[] = {9, 12, 7};
   double *x;
 

@@ -11,9 +11,9 @@ void opt_nelder_mead(
   double **x, /* (n + 1)*n matrix: vertices of the current simplex */
   double *f, /* n + 1 values of the function in the vertices */
   double tolf, double tolx,
-  int maxfun, int maxiter,
+  int maxfunevals, int maxiter,
   int *rc,
-  int *nfun, int *niter,
+  int *nfunevals, int *niter,
   double *work)
 {
   double fr, fe, fc;
@@ -56,10 +56,10 @@ void opt_nelder_mead(
     f[i] = (*fun)(x[i]);
   
   *rc = 1;
-  *nfun = n + 1;
+  *nfunevals = n + 1;
   *niter = 0;
 
-  while (*nfun < maxfun && *niter < maxiter)
+  while (*nfunevals < maxfunevals && *niter < maxiter)
   {
     /* Determine which vertex of the current simplex 
        is the highest (worst), next-highest, and lowest (best) */
@@ -126,7 +126,7 @@ void opt_nelder_mead(
       xr[j] = (1 + alpha) * xbar[j] - alpha * x[imax][j];
 
     fr = (*fun)(xr);
-    (*nfun)++;
+    (*nfunevals)++;
     
     if (fr < f[imin])
     {
@@ -136,7 +136,7 @@ void opt_nelder_mead(
         xe[j] = beta * xr[j] + (1 - beta) * xbar[j];
 
       fe = (*fun)(xe);
-      (*nfun)++;
+      (*nfunevals)++;
 
       if (fe < f[imin]) /* fe < f[imin] или fr ??? */
       {
@@ -183,7 +183,7 @@ void opt_nelder_mead(
         }
 
         fc = (*fun)(xc);
-        (*nfun)++;
+        (*nfunevals)++;
   
         if (fc < fr && fc < f[imax])  /* ... corresponingly */
         {
@@ -202,7 +202,7 @@ void opt_nelder_mead(
                 x[i][j] = x[imin][j] + delta * (x[i][j] - x[imin][j]);
               f[i] = (*fun)(x[i]);
             }
-          (*nfun) += n;
+          (*nfunevals) += n;
         }
       }
     }

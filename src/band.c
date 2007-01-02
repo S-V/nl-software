@@ -17,12 +17,12 @@ void band_tridiag(double *a, double *d, double *c, double *b, double *x, size_t 
 
   for(j = 1; j < n - 1; j++)
   {
-    bet = d[j] - a[j] * f[j - 1];
+    bet = d[j] - a[j - 1] * f[j - 1];
     f[j] = c[j] / bet;
-    x[j] = (b[j] - a[j] * x[j - 1]) / bet;
+    x[j] = (b[j] - a[j - 1] * x[j - 1]) / bet;
   }
 
-  x[n-1] = (b[n-1] - a[n-1] * x[n-2]) / (d[n-1] - a[n-1] * f[n-2]);
+  x[n-1] = (b[n - 1] - a[n - 2] * x[n - 2]) / (d[n - 1] - a[n - 2] * f[n-2]);
 
   for(j = n - 1; j > 0; j--)
   {

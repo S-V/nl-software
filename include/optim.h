@@ -36,7 +36,7 @@
     - \f$f\f$ - массив длины \f$n+1\f$
     - \f$tolf\f$ - допуск по значению функции
     - \f$tolx\f$ - допуск по \f$x\f$
-    - \f$maxfun\f$ - максимальное число вычислений значений функции
+    - \f$maxfunevals\f$ - максимальное число вычислений значений функции
     - \f$maxiter\f$ - максимальное число итераций
   - Выход:
     - \f$x0\f$ - найденная точка локального минимума
@@ -49,7 +49,7 @@
         и диаметр симплекса (в чебышевой норме) не превышает \f$tolx\f$.
       - \f$rc = 1\f$: количество вычислений значений функции превысило \f$maxfun\f$
         или число итераций достигло \f$maxiter\f$
-    - \f$nfun\f$ - колчество вычислений значений функции
+    - \f$nfunevals\f$ - колчество вычислений значений функции
     - \f$niter\f$ - число выполненных итераций
   - Рабочий массив:
     - \f$work\f$ - массив длины \f$4n\f$
@@ -64,8 +64,8 @@ void opt_nelder_mead(
   double **x,
   double *f,
   double tolf, double tolx,
-  int maxfun, int maxiter,
+  int maxfunevals, int maxiter,
   int *rc,
-  int *nfun, int *niter,
+  int *nfunevals, int *niter,
   double *work);
 #endif

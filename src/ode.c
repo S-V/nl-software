@@ -1,31 +1,31 @@
 #include <math.h>
+#include <float.h>
 #include "nl.h"
 
 /* 
   Один шаг метода Рунге-Кутты-Фельберга.
 */
 
-void ode_rkf_step (
+void ode_rkf45_step (
   void (*f)(double, double*, double*), 
   size_t n, 
   double t0, 
   double tout, 
-  double* y0, 
-  double* ydot, 
-  double* y, 
-  double* err, 
-  double* work)
+  double *y0, 
+  double *ydot, 
+  double *y, 
+  double *err, 
+  double *work)
 {
    double h, err_j;
    double *k1, *k2, *k3, *k4, *k5, *k6;
    size_t j;
 
-   k1 = ydot;
    k2 = work;
    k3 = work + n;
-   k4 = work + 1*n;
-   k5 = work + 2*n;
-   k6 = work + 3*n;
+   k4 = work + 2*n;
+   k5 = work + 3*n;
+   k6 = work + 4*n;
                     
    h = tout - t0;
        
@@ -53,7 +53,6 @@ void ode_rkf_step (
    for (j = 0; j < n; j++)
       y[j] = y0[j] + h*(16*k1[j]/135 + 6656*k3[j]/12825 + 28561*k4[j]/56430 - 9*k5[j]/50 + 2*k6[j]/55);
 
-
    *err = 0;
 
    for (j = 0; j < n; j++)
@@ -65,9 +64,7 @@ void ode_rkf_step (
 
 }
 
-
-
-void ode_rkf(
+void ode_rkf45(
   void (*f)(double, double*, double*), 
   size_t n, 
   double t0, 
@@ -75,93 +72,86 @@ void ode_rkf(
   double *y0, 
   double reltol, 
   double abstol, 
-  int maxfun, 
+  int maxfunevals, 
   int *rc, 
   double *y, 
   double *ydot,
+  int *nfunevals,
   double *work)
 {
 
-   double eps, epsp1, sqrt_eps, err, t, h, hmin, delta;
-   int fun_evals;
+   double eps, epsp1, sqrt_eps, err, r, rj, th, dir, t, h, hmin, delta;
+   size_t j;
 
-   eps = 1.0;
-
-   do
-   {
-     eps = eps/2;
-     epsp1 = 1.0 + eps;
-   }
-   while (epsp1 > 1.0);
-
+   eps = DBL_EPSILON;
    sqrt_eps = sqrt(eps);
 
-   if (fabs(t0) > fabs(tout))
-      hmin = sqrt_eps*fabs(t0);
-   else 
-      hmin = sqrt_eps*fabs(tout); 
+   hmin = sqrt_eps*NL_MAX(fabs(t0), fabs(tout));
 
-   t = t0;
-   h = tout - t0;
+   (*f)(t0, y0, ydot);
+   (*nfunevals) = 1;
 
-   (*f)(t, y0, ydot);
-   fun_evals = 1;
+   dir = NL_SIGN(tout - t0);
+
+   /* Длина начального шага */
+
+   r = 0;
+   th = abstol/reltol;
+   for (j = 0; j < n; j++)
+   {
+     rj = fabs(ydot[j]/NL_MAX(fabs(y0[j]), th));
+     if (rj > r)
+       r = rj;
+   }
+
+   h = dir*0.9*pow(reltol, 1/3)/r + DBL_MIN;
 
    /* Основной цикл */
 
-   while (tout > t0 && t < tout || tout < t0 && t > tout) 
+   t = t0;
+
+   while (dir*(t - tout) < 0) 
    {
-       if (tout > t0 && t + h > tout || tout < 0 && t + h < tout)
+       if (dir*(t + h - tout) > 0)
           h = tout - t;
 
-       ode_rkf_step(f, n, t, t + h, y0, ydot, y, &err, work);
-       fun_evals += 6;
+       ode_rkf45_step(f, n, t, t + h, y0, ydot, y, &err, work);
+       (*nfunevals) += 6;
 
-       if (fun_evals > maxfun)
+       if ((*nfunevals) > maxfunevals)
        {
           *rc = 0;
           return;
        }
 
-       if(err <= abstol || err <= reltol*nl_dvector_norm_inf(y, n)) 
+       if(err <= abstol + reltol*nl_dvector_norm_inf(y, n)) 
        {
           t += h;
           nl_dvector_copy(y0, y, n);
 
           (*f)(t, y0, ydot);
        }
-       else
+
+       /* Выбор длины нового шага */
+   
+       delta = 0.9*pow(reltol/err, 0.2);
+       delta = NL_MAX(NL_MIN(delta, 4), 0.1);
+
+       h *= delta;
+
+       if (h < hmin)
        {
-          /* Выбор длины нового шага */
-
-	  if (err == 0)
-             delta = 4;
-          else 
-          {
-             if (reltol < eps)
-                delta = 0.8*pow(eps/err, 0.2);
-             else
-                delta = 0.8*pow(reltol/err, 0.2);
-             if (delta < 0.1)
-               delta = 0.1;
-             else if (delta > 4)
-               delta = 4;
-          }
-          h *= delta;
-
-          if (h < hmin)
-          {
-             *rc = -1;
-             return;
-          }
+          *rc = -1;
+          return;
        }
+       
    }
 
    *rc = 1;
 }
 
 
-void ode_rosenbrock_step(
+void ode_rosenbrock34_step(
   void (*f)(double, double*, double*), 
   size_t n, 
   double t0, 
@@ -250,7 +240,7 @@ void ode_rosenbrock_step(
       - задавать минимальный, максимальный и начальный шаг
 */
 
-void ode_rosenbrock(
+void ode_rosenbrock34(
   void (*f)(double, double*, double*), 
   void (*jacobian)(double, double*, double*, double**), 
   size_t n, 
@@ -259,61 +249,65 @@ void ode_rosenbrock(
   double *y0, 
   double reltol, 
   double abstol, 
-  int maxfun, 
+  int maxfunevals, 
   int *rc, 
   double *y, 
   double *ydot,
   double *fprimet, 
-  double **fprimey, 
+  double **fprimey,
+  int *nfunevals, 
   double **a, 
   double *work,
   size_t *p)
 {
-   double eps, epsp1, sqrt_eps, err, t, h, hmin, delta;
-   int fun_evals;
+   double eps, sqrt_eps, err, dir, r, rj, t, th, h, hmin, delta;
+   size_t j;
 
-   eps = 1.0;
-
-   do
-   {
-     eps = eps/2;
-     epsp1 = 1.0 + eps;
-   }
-   while (epsp1 > 1.0);
-
+   eps = DBL_EPSILON;
    sqrt_eps = sqrt(eps);
 
-   if (fabs(t0) > fabs(tout))
-      hmin = sqrt_eps*fabs(t0);
-   else 
-      hmin = sqrt_eps*fabs(tout); 
+   hmin = sqrt_eps*NL_MAX(fabs(t0), fabs(tout));
 
-   t = t0;
-   h = tout - t0;
+   dir = NL_SIGN(tout - t0);
+
+   (*f)(t0, y0, ydot);
+   (*jacobian)(t0, y0, fprimet, fprimey);
+
+   (*nfunevals) = 1;
+
+   /* Длина начального шага */
+
+   r = 0;
+   th = abstol/reltol;
+   for (j = 0; j < n; j++)
+   {
+     rj = fabs(ydot[j]/NL_MAX(fabs(y0[j]), th));
+     if (rj > r)
+       r = rj;
+   }
+
+   h = dir*0.9*pow(reltol, 1/4)/r + DBL_MIN;
 
    /* Основной цикл */
 
-   (*f)(t, y0, ydot);
-   (*jacobian)(t, y0, fprimet, fprimey);
+   t = t0;
 
-   fun_evals = 1;
-
-   while (tout > t0 && t < tout || tout < t0 && t > tout) 
+   while (dir*(t - tout) < 0) 
    {
-       if (tout > t0 && t + h > tout || tout < 0 && t + h < tout)
+       if (dir*(t + h - tout) > 0)
           h = tout - t;
 
-       ode_rosenbrock_step(f, n, t, t + h, y0, ydot, fprimet, fprimey, y, &err, a, work, p);
+       ode_rosenbrock34_step(f, n, t, t + h, y0, ydot, fprimet, fprimey, y, &err, a, work, p);
 
-       fun_evals += 2;
+       (*nfunevals) += 2;
        
-       if (fun_evals > maxfun)
+       if ((*nfunevals) > maxfunevals)
        {
           *rc = 0;
           return;
        }
        
-       if (err <= abstol || err <= reltol*nl_dvector_norm_inf(y, n)) 
+       if (err <= abstol + reltol*nl_dvector_norm_inf(y, n)) 
        {
           t += h;
           nl_dvector_copy(y0, y, n);
@@ -321,32 +315,20 @@ void ode_rosenbrock(
           (*f)(t, y0, ydot);
           (*jacobian)(t, y0, fprimet, fprimey);
          
-          fun_evals += 1;
+          (*nfunevals) += 1;
        }
-       else
+
+       /* Выбор длины нового шага */
+
+       delta = 0.9*pow(reltol/err, 0.25);
+       delta = NL_MAX(NL_MIN(delta, 4), 0.1);
+
+       h *= delta;
+
+       if (h < hmin)
        {
-          /* Выбор длины нового шага */
-
-	  if (err == 0)
-             delta = 4;
-          else 
-          {
-             if (reltol < eps)
-                delta = 0.8*pow(eps/err, 0.25);
-             else
-                delta = 0.8*pow(reltol/err, 0.25);
-             if (delta < 0.1)
-               delta = 0.1;
-             else if (delta > 4)
-               delta = 4;
-          }
-          h *= delta;
-
-          if (h < hmin)
-          {
-             *rc = -1;
-             return;
-          }
+          *rc = -1;
+          return;
        }
    }
 

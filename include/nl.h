@@ -16,6 +16,12 @@
 #include "optim.h"
 #include "fft.h"
 #include "conv.h"
+#include "ode.h"
+#include "quad.h"
+
+#define NL_MIN(a, b)  (((a) < (b))? (a):(b))
+#define NL_MAX(a, b)  (((a) > (b))? (a):(b))
+#define NL_SIGN(a)  (((a) > 0)? 1:(((a) < 0)? -1:0))
 
 /**
   \file 
@@ -32,7 +38,7 @@
 
   \todo
     Во всех модулях в описаниях *a называть не массивом, а указателем, указывающим на 
-    область памяти нужной лины (входной параметр).
+    область памяти нужной длины (входной параметр).
 */
 
 /*
@@ -71,7 +77,7 @@ static const char* nl_version =
 
 Основные разделы библиотеки см. в рубрике <a href="files.html">Файлы</a>
 
-Версия 1.0.0 библиотеки разработана в учебно-исследовательской лаборатории
+Версия 1.0.0 библиотеки разрабатывалась в учебно-исследовательской лаборатории
 "Информационные технологии" Нижегородского государственного университета
 им. Н.И.Лобачевского при поддержке Фонда содействия развитию малых форм
 предприятий в научно-технической сфере.
@@ -130,6 +136,8 @@ makemsvc.bat, makebcc32.bat, makewatcom.bat и makegcc.bat. Эти командные файлы и
 [Recipes]
 <i>Press W.H., Teukolsky S.A., Vetterling W.T.,  Flannery B.P.</i> Numerical Recipes in C. The Art of Scientific Computing. 1992. 
 
+[GG2000]
+<i>Gander W., Gautschi  W.</i> Adaptive Quadrature - Revisited. BIT, Vol. 40, 2000. P. 84-101
 
 */
 
