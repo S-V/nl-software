@@ -1,55 +1,18 @@
-/*
-  Пример использования функций из модуля @.h@ 
-  Корень уравнения
-  $x^3 - 2x - 5 = 0$
-*/
-
-#include <stdio.h>
 #include <math.h>
+#include <float.h>
 #include "nl.h"
 
-/**
-  Решение уравнения с одним неизвестным.
-  Используется комбинированный метод деления пополам (бисекции),
-  секущих и обратной квадратичной интерполяции.
-
-  - Вход:
-	- @func@ - указатель на функцию вычисляющую правую часть уравнения \f$f(x)=0\f$
-	- $a$ - левый конец исходного интервала
-	- $b$ - правый конец исходного интервала
-	- $tol$ - желаемая длина интервала неопределенности конечного результата
-
-  - Выход:
-	- Функция возвращает найденное решение.
-
-  Без проверки предполагается, что на концах отрезка \f$[a, b]\f$
-  функция \f$f(x)\f$ имеет разные знаки. Корень уравнения ищется в пределах допуска
-  на ошибку \f$4\cdot \varepsilon_{\rm M} \cdot |x| + tol\f$,
-  где \f$\varepsilon_{\rm M}\f$ - машинная точность.
-
-  Функция является переводом фортрановской программы zeroin из книги [FMM].
-*/
-
-double fzero(double (*func)(double), double a, double b, double tol) 
+double roots_zero(double (*fun)(double), double a, double b, double abstol) 
 {
 
   double eps, tol1, c, d, e, fa, fb, fc, p, q, r, s, xm;
 
-  /* Вычисление машинного эпсилон */
-
-  eps = 1.0;
-
-  do
-  {
-    eps = eps/2;
-    tol1 = 1.0 + eps;
-  }
-  while (tol1 > 1.0);
-
   /* Начальные приготовления */
 
-  fa = (*func)(a);
-  fb = (*func)(b);
+  eps = DBL_EPSILON;
+
+  fa = (*fun)(a);
+  fb = (*fun)(b);
   c = a;
   fc = fa;
   d = b - a;
@@ -72,7 +35,7 @@ double fzero(double (*func)(double), double a, double b, double tol)
 
      /* Проверка сходимости */
 
-     tol1 = 2.0*eps*fabs(b) + 0.5*tol;
+     tol1 = 2.0*eps*fabs(b) + 0.5*abstol;
      xm = .5*(c - b);
      if (fabs(xm) <= tol1 || fb == 0.0) 
   	break;
@@ -140,7 +103,7 @@ double fzero(double (*func)(double), double a, double b, double tol)
        else
          b = b - tol1;
 
-     fb = (*func)(b);
+     fb = (*fun)(b);
 
      if (fb*(fc/fabs(fc)) > 0.0)
      {
@@ -156,19 +119,3 @@ double fzero(double (*func)(double), double a, double b, double tol)
 
 }
 
-double func(double x)
-{
-  return x*(x*x - 2) - 5;
-}
-
-
-int main()
-{
-  double x;
-
-  x = fzero(&func, 2, 3, 1e-6); 
-
-  printf("Корень:  %f  \n", x);
-
-  return 0;
-}

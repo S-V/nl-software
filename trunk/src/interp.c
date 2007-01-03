@@ -1,20 +1,12 @@
-#include <stdio.h>
 #include <math.h>
 #include "nl.h"
 
-/**
-  \f$n \ge 3\f$
-  x[j] < x[j + 1]
-
-’àã¤®¥¬ª®áâì \f$25n + O(1)$\f
-*/
-
-void pchip(double *x, double *y, size_t n, double *b, double *c, double *d)
+void interp_pchip(double *x, double *y, size_t n, double *b, double *c, double *d)
 {
    double w1, w2, h, delta, Delta, Delta1;
    size_t j;
 
-   /* ‚ëç¨á«ï¥¬ d[j] (¯à®¨§¢®¤­ë¥) */
+   /* Âû÷èñëÿåì d[j] (ïðîèçâîäíûå) */
 
    Delta = y[1] - y[0];
 
@@ -35,7 +27,7 @@ void pchip(double *x, double *y, size_t n, double *b, double *c, double *d)
       Delta = Delta1;
    }
 
-   /* ‚ëç¨á«ï¥¬ d[0] ¨ d[n - 1] */
+   /* Âû÷èñëÿåì d[0] è d[n - 1] */
 
    d[0] = ((x[1] - 2*x[0] + x[2])*(y[1] - y[0]) - (x[1] - x[0])*(y[2] - y[1]))/(x[2]-x[0]);
 
@@ -51,7 +43,7 @@ void pchip(double *x, double *y, size_t n, double *b, double *c, double *d)
    else if (NL_SIGN(y[n - 1] - y[n - 2]) != NL_SIGN(y[n - 2] - y[n - 3]) && fabs(d[n - 1]) > fabs(3*(y[n - 1] - y[n - 2])))
       d[n - 1] = 3*(y[n - 1] - y[n - 2]);
 
-   /* ‚ëç¨á«ï¥¬ b[j] ¨ c[j] */
+   /* Âû÷èñëÿåì b[j] è c[j] */
 
    for (j = 0; j < n - 1; j++)
    {
@@ -64,14 +56,7 @@ void pchip(double *x, double *y, size_t n, double *b, double *c, double *d)
    
 }
 
-/**
-  \f$n \ge 4\f$
-  x[j] < x[j + 1]
-
-  ’àã¤®¥¬ª®áâì: \f$32n + O(1)$\f
-*/
-
-void spline(double *x, double *y, size_t n, double *b, double *c, double *d, double *work)
+void interp_spline(double *x, double *y, size_t n, double *b, double *c, double *d, double *work)
 {
    double *a, *r, delta, delta1, h, h0, h1, hlst, h2ndlst;
    size_t j;
@@ -79,19 +64,19 @@ void spline(double *x, double *y, size_t n, double *b, double *c, double *d, dou
    a = work;
    r = work + n;
 
-   /* ‚ëç¨á«ï¥¬ d[j] (¯à®¨§¢®¤­ë¥) */
+   /* Âû÷èñëÿåì d[j] (ïðîèçâîäíûå) */
 
    h = x[1] - x[0];
    delta = (y[1] - y[0])/h;
 
    for (j = 1; j < n - 1; j++)
    {
-      c[j] = h;				/* ­ ¤-¤¨ £®­ «ì­ë¥ í«¥¬¥­âë */
-      h = b[j - 1] = x[j + 1] - x[j];	/* ¯®¤-¤¨ £®­ «ì­ë¥ í«¥¬¥­âë */
-      a[j] = 2*(b[j - 1] + c[j]);	/* ¤¨ £®­ «ì */
+      c[j] = h;				/* íàä-äèàãîíàëüíûå ýëåìåíòû */
+      h = b[j - 1] = x[j + 1] - x[j];	/* ïîä-äèàãîíàëüíûå ýëåìåíòû */
+      a[j] = 2*(b[j - 1] + c[j]);	/* äèàãîíàëü */
 
       delta1 = (y[j + 1] - y[j])/b[j - 1];
-      r[j] = 3*(b[j - 1]*delta + c[j]*delta1);	/* ¯à ¢ ï ç áâì */
+      r[j] = 3*(b[j - 1]*delta + c[j]*delta1);	/* ïðàâàÿ ÷àñòü */
       delta = delta1;
    }
 
@@ -100,8 +85,8 @@ void spline(double *x, double *y, size_t n, double *b, double *c, double *d, dou
    b[n - 2] = x[n - 1] - x[n - 3];
    a[n - 1] = x[n - 2] - x[n - 3];
 
-   /* “ç¨âë¢ ¥¬ ª®­æ¥¢ë¥ ãá«®¢¨ï 
-      (­¥¯à¥àë¢­®áâì ¢â®à®© ¯à®¨§¢®¤­®© ¢® ¢â®à®© ¨ ¯à¥¤¯®á«¥¤­¥© â®çª å) */
+   /* Ó÷èòûâàåì êîíöåâûå óñëîâèÿ 
+      (íåïðåðûâíîñòü âòîðîé ïðîèçâîäíîé âî âòîðîé è ïðåäïîñëåäíåé òî÷êàõ) */
 
    r[0] = 0;
    r[n - 1] = 0;
@@ -119,7 +104,7 @@ void spline(double *x, double *y, size_t n, double *b, double *c, double *d, dou
 
    band_tridiag(b, a, c, r, d, n);
 
-   /* ‚ëç¨á«ï¥¬ b[j] ¨ c[j] */
+   /* Âû÷èñëÿåì b[j] è c[j] */
 
    for (j = 0; j < n - 1; j++)
    {
@@ -131,10 +116,9 @@ void spline(double *x, double *y, size_t n, double *b, double *c, double *d, dou
    
 }
 
-double eval(double *x, double *y, double *b, double *c, double *d, double xx, size_t n)
+size_t find_interval(double *x, size_t n, double xx)
 {
    size_t low, up, j;
-   double s;
 
    low = 0;
    up = n;
@@ -149,60 +133,55 @@ double eval(double *x, double *y, double *b, double *c, double *d, double xx, si
    }
    while (up > low + 1);
 
-   j = low;
+   return low;
+}
+
+double interp_eval(double *x, double *y, double *b, double *c, double *d, size_t n, double xx)
+{
+   size_t j;
+   double s;
+
+   j = find_interval(x, n, xx);
    s = xx - x[j];
 
    return y[j] + s*(d[j] + s*(c[j] + s*b[j]));
 }
 
-int main()
+double interp_quad(double *x, double *y, double *b, double *c, double *d, size_t n, double x1, double x2)
 {
-   size_t n;
-   double *x, *y, *b, *c, *d, xx, *work;
+   double q, s;
+   size_t j, j1, j2;
 
-   n = 5;
+   j1 = find_interval(x, n, x1);
+   j2 = find_interval(x, n, x2);
 
-   x = nl_dvector_create(n);
-   y = nl_dvector_create(n);
-   b = nl_dvector_create(n - 1);
-   c = nl_dvector_create(n - 1);
-   d = nl_dvector_create(n);
-   work = nl_dvector_create(2*n);
-
-   x[0] = -2; y[0] = 0;
-   x[1] = -1; y[1] = 0;
-   x[2] =  0; y[2] = 1;
-   x[3] =  1; y[3] = 0;
-   x[4] =  2; y[4] = 0;
-
-   //pchip(x, y, n, b, c, d);
-   spline(x, y, n, b, c, d, work);
-
-   printf("  x[j] = ");
-   nl_dvector_print(x, n, NULL);
-   printf("  y[j] = ");
-   nl_dvector_print(y, n, NULL);
-   printf("  b[j] = ");
-   nl_dvector_print(b, n - 1, NULL);
-   printf("  c[j] = ");
-   nl_dvector_print(c, n - 1, NULL);
-   printf("  d[j] = ");
-   nl_dvector_print(d, n, NULL);
-
-   printf("     x       y    \n");
-   printf(" ---------------- \n");
-
-   for (xx = -2; xx <= 2; xx += .25)
+   if (j1 == j2)
    {
-      printf("  %5.2f  %7.4f\n", xx, eval(x, y, b, c, d, xx, n));
+      j = j1;
+      s = x2 - x[j];
+      q = s*(y[j] + s*(d[j]/2 + s*(c[j]/3 + s*b[j]/4)));
+      s = x1 - x[j];
+      q -= s*(y[j] + s*(d[j]/2 + s*(c[j]/3 + s*b[j]/4)));
+   }
+   else
+   {
+      j = j1;
+      s = x[j + 1] - x[j];
+      q = s*(y[j] + s*(d[j]/2 + s*(c[j]/3 + s*b[j]/4)));
+      s = x1 - x[j];
+      q -= s*(y[j] + s*(d[j]/2 + s*(c[j]/3 + s*b[j]/4)));
+
+      for (j = j1 + 1; j < j2; j++)
+      {
+         s = x[j + 1] - x[j];
+         q += s*(y[j] + s*(d[j]/2 + s*(c[j]/3 + s*b[j]/4)));
+      }
+
+      j = j2;
+      s = x2 - x[j];
+      q += s*(y[j] + s*(d[j]/2 + s*(c[j]/3 + s*b[j]/4)));
    }
 
-   nl_dvector_free(x);
-   nl_dvector_free(y);
-   nl_dvector_free(b);
-   nl_dvector_free(c);
-   nl_dvector_free(d);
-   nl_dvector_free(work);
-
-   return 0;
+   return q;
 }
+
