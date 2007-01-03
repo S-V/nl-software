@@ -18,6 +18,8 @@
 #include "conv.h"
 #include "ode.h"
 #include "quad.h"
+#include "interp.h"
+#include "roots.h"
 
 #define NL_MIN(a, b)  (((a) < (b))? (a):(b))
 #define NL_MAX(a, b)  (((a) > (b))? (a):(b))
@@ -82,7 +84,7 @@ static const char* nl_version =
 им. Н.И.Лобачевского при поддержке Фонда содействия развитию малых форм
 предприятий в научно-технической сфере.
 
-(c) А.М.Тагунов, <a href="http://www.uic.nnov.ru/~zny">Н.Ю.Золотых</a>, 2004, 2005, 2006 
+(c) А.М.Тагунов, <a href="http://www.uic.nnov.ru/~zny">Н.Ю.Золотых</a>, 2004, 2005, 2006, 2007 
 
 
 
