@@ -13,14 +13,16 @@ int main()
   double d[] = {3, 4, 5};
   double c[] = {6, 7};
   double b[] = {9, 12, 7};
-  double *x;
+  double *x, *work;
 
   x = nl_dvector_create(n);
+  work = nl_dvector_create(n);
 
-  band_tridiag(a, d, c, b, x, n);
+  band_tridiag(a, d, c, b, x, n, work);
   nl_dvector_print(x, n, NULL);
 
   nl_dvector_free(x);
+  nl_dvector_free(work);
 
   return 0;
 }

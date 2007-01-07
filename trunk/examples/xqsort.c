@@ -3,7 +3,6 @@
   Быстрая сортировка
 */
 
-#include <stdlib.h>
 #include "nl.h"
 
 int compare(size_t i, size_t j, void* data)

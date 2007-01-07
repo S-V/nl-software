@@ -62,7 +62,7 @@ static double PYTHAG(double a, double b)
 }
 
 
-void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal)
+void eig_balance(double *A, size_t n, size_t *low, size_t *high, double *scal)
 {
   double b2, r, c, f, g, s, BASIS;
   size_t m, k, j, i;
@@ -80,7 +80,7 @@ void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal)
     {
       r = 0;
       for (i = 0; i <= k; i++)
-        if (i != j)  r += fabs(A[j][i]);
+        if (i != j)  r += fabs(A[j*n + i]);
       if (r == 0) 
       {
         iter = 1;
@@ -88,9 +88,9 @@ void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal)
         if (j != k)
         {
           for (i = 0; i <= k; i++) 
-	     RSWAP(&(A[i][j]), &(A[i][k]));
+	     RSWAP(&(A[i*n + j]), &(A[i*n + k]));
           for (i = m; i < n; i++) 
-             RSWAP(&(A[j][i]), &(A[k][i]));
+             RSWAP(&(A[j*n + i]), &(A[k*n + i]));
         }
         k--;
       }
@@ -105,7 +105,7 @@ void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal)
     {
       c = 0.0;
       for (i = m; i <= k; i++)
-        if (i != j)  c += fabs(A[i][j]);
+        if (i != j)  c += fabs(A[i*n + j]);
       if (c == 0.0) 
       {
         iter = 1;
@@ -113,9 +113,9 @@ void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal)
         if (j != m) 
         {
           for (i = 0; i <= k; i++) 
-             RSWAP(&(A[i][j]), &(A[i][m]));
+             RSWAP(&(A[i*n + j]), &(A[i*n + m]));
           for (i = m; i < n; i++) 
-             RSWAP(&(A[j][i]), &(A[m][i]));
+             RSWAP(&(A[j*n + i]), &(A[m*n + i]));
         }
         m++;
       }
@@ -138,8 +138,8 @@ void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal)
       {
         if (j != i) 
         {
-          c += fabs(A[j][i]);
-          r += fabs(A[i][j]);
+          c += fabs(A[j*n + i]);
+          r += fabs(A[i*n + j]);
         }
       }
       g = r / BASIS;
@@ -165,15 +165,15 @@ void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal)
         g = 1.0 / f;
         scal[i] *= f;
         for (j = m; j < n; j++) 
-          A[i][j] *= g;
+          A[i*n + j] *= g;
         for (j = 0; j <= k; j++)  
-          A[j][i] *= f;
+          A[j*n + i] *= f;
       }
     }
   }
 }
 
-void eig_hess_reduction(double **A, size_t n, size_t low, size_t high, size_t *perm)
+void eig_hess_reduction(double *A, size_t n, size_t low, size_t high, size_t *perm)
 {
   double  x, y;
   size_t m, i, j;
@@ -184,9 +184,9 @@ void eig_hess_reduction(double **A, size_t n, size_t low, size_t high, size_t *p
     x = 0.0;
     for(j = m; j <= high; j++)
     {
-      if (fabs(A[j][m-1]) > fabs(x)) 
+      if (fabs(A[j*n + m - 1]) > fabs(x)) 
       {
-        x = A[j][m-1];
+        x = A[j*n + m-1];
         i = j;
       }
     }
@@ -195,63 +195,63 @@ void eig_hess_reduction(double **A, size_t n, size_t low, size_t high, size_t *p
     if (i != m) 
     {
       for(j = m - 1; j < n; j++)
-          RSWAP(&(A[i][j]), &(A[m][j]));
+          RSWAP(&(A[i*n + j]), &(A[m*n + j]));
       for(j = 0; j <= high; j++)
-          RSWAP(&(A[j][i]), &(A[j][m]));
+          RSWAP(&(A[j*n + i]), &(A[j*n + m]));
     }
 
     if (x != 0.0) 
     {
       for(i = m + 1; i <= high; i++)
       {
-        y = A[i][m-1];
+        y = A[i*n + m-1];
         if (y != 0.0) 
         {
           y /= x;
-          A[i][m-1] = y;
+          A[i*n + m-1] = y;
           for(j = m; j < n; j++)
-              A[i][j] = A[i][j] - y * A[m][j];
+              A[i*n + j] = A[i*n + j] - y * A[m*n + j];
           for(j = 0; j <= high; j++)
-              A[j][m] = A[j][m] + y * A[j][i];
+              A[j*n + m] = A[j*n + m] + y * A[j*n + i];
         }
       }
     }
   }
 }
 
-void eig_hess_transform_matrix(double **A, size_t n, size_t low, size_t high, 
-                               size_t *perm, double **Q)
+void eig_hess_transform_matrix(double *A, size_t n, size_t low, size_t high, 
+                               size_t *perm, double *Q)
 {
   size_t i, k, j;
 
   for (i = 0; i < n; i++)
   {
     for (k = 0; k < n; k++)
-       Q[i][k] = 0.0;
-    Q[i][i] = 1.0;
+       Q[i*n + k] = 0.0;
+    Q[i*n + i] = 1.0;
   }
 
   for (i = high - 1; i > low; i--)
   {
     j = perm[i];
     for (k = i + 1; k <= high; k++) 
-      Q[k][i] = A[k][i - 1];
+      Q[k*n + i] = A[k*n + i - 1];
     if (i != j)
     {
       for (k = i; k <= high; k++)
       {
-        Q[i][k] = Q[j][k];
-        Q[j][k] = 0.0;
+        Q[i*n + k] = Q[j*n + k];
+        Q[j*n + k] = 0.0;
       }
-      Q[j][i] = 1.0;
+      Q[j*n + i] = 1.0;
     }
   }
 }
 
 
 // complex division
-void eig_vectors(double **A, size_t n, size_t low, size_t high, 
-             double *wr, double *wi, double **Q)
+void eig_vectors(double *A, size_t n, size_t low, size_t high, 
+             double *wr, double *wi, double *Q)
 {
   size_t i, j, k, l, m, en, na;
   double p, q, r, s, t, w, x, y, z, ra, sa, vr, vi, norm, temp;
@@ -263,7 +263,7 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
 
   for (i = 0; i < n; i++)  /* find norm of A */
     for (j = i; j < n; j++)
-      norm += fabs(A[i][j]);
+      norm += fabs(A[i*n + j]);
 
   /* if (norm == 0.0) 0.0 matrix */
 
@@ -275,13 +275,13 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
     if (q == 0.0)
     {
       m = en;
-      A[en][en] = 1.0;
+      A[en*n + en] = 1.0;
       for (i = en; (i--) > 0; )
       {
-        w = A[i][i] - p;
-        r = A[i][en];
+        w = A[i*n + i] - p;
+        r = A[i*n + en];
         for (j = m; j <= na; j++)
-          r += A[i][j] * A[j][en];
+          r += A[i*n + j] * A[j*n + en];
         if (wi[i] < 0.0) 
         {
           z = w;
@@ -296,7 +296,7 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
               temp = w; 
             else 
               temp = mach_eps * norm;
-            A[i][en] = -r/temp;   
+            A[i*n + en] = -r/temp;   
           }         
           else
           {
@@ -304,16 +304,16 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
               | w   x |  | A[i][en]   |   | -r |
               |       |  |            | = |    |
               | y   z |  | A[i+1][en] |   | -s | */
-            x = A[i][i + 1];
-            y = A[i + 1][i];
+            x = A[i*n + i + 1];
+            y = A[(i + 1)*n + i];
             q = (wr[i] - p)*(wr[i] - p) + wi[i]*wi[i];
-            A[i][en] = (x * s - z * r) / q;
-            t = A[i][en];
+            A[i*n + en] = (x * s - z * r) / q;
+            t = A[i*n + en];
             if (fabs(x) > fabs(z)) 
                temp = (-r -w * t) / x; 
             else 
                temp = (-s -y * t) / z;
-            A[i+1][en] = temp;
+            A[(i+1)*n + en] = temp;
           }
         } /* wi[i] < 0 */
       } /* i loop */
@@ -321,26 +321,26 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
     else if (q < 0.0) 
     {
       m = na;
-      if (fabs(A[en][na]) > fabs(A[na][en]))
+      if (fabs(A[en*n + na]) > fabs(A[na*n + en]))
       {
-        A[na][na] = - (A[en][en] - p) / A[en][na];
-        A[na][en] = - q / A[en][na];
+        A[na*n + na] = - (A[en*n + en] - p) / A[en*n + na];
+        A[na*n + en] = - q / A[en*n + na];
       }
       else
       {
-        COMDIV(-A[na][en], 0.0, A[na][na]-p, q, &A[na][na], &A[na][en]);
+        COMDIV(-A[na*n + en], 0.0, A[na*n + na]-p, q, &A[na*n + na], &A[na*n + en]);
       }
-      A[en][na] = 1.0;
-      A[en][en] = 0.0;
+      A[en*n + na] = 1.0;
+      A[en*n + en] = 0.0;
       for (i = na; (i--) > 0; )
       {
-        w = A[i][i] - p;
-        ra = A[i][en];
+        w = A[i*n + i] - p;
+        ra = A[i*n + en];
         sa = 0.0;
         for (j = m; j <= na; j++)
         {
-          ra = ra + A[i][j] * A[j][na];
-          sa = sa + A[i][j] * A[j][en];
+          ra = ra + A[i*n + j] * A[j*n + na];
+          sa = sa + A[i*n + j] * A[j*n + en];
         }
 
         if (wi[i] < 0.0) 
@@ -353,29 +353,29 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
         {
           m = i;
           if (wi[i] == 0.0)
-            COMDIV(-ra, -sa, w, q, &A[i][na], &A[i][en]);
+            COMDIV(-ra, -sa, w, q, &A[i*n + na], &A[i*n + en]);
           else
           {
             /* Solve complex linear system:
                | w+i*q     x | | A[i][na] + i*A[i][en]  |   | -ra+i*sa |
                |             | |                        | = |          |
                |   y    z+i*q| | A[i+1][na]+i*A[i+1][en]|   | -r+i*s   | */
-            x = A[i][i + 1];
-            y = A[i + 1][i];
+            x = A[i*n + i + 1];
+            y = A[(i + 1)*n + i];
             vr = (wr[i] - p) * (wr[i] - p) + wi[i] * wi[i] - q * q;
             vi = 2.0 * q * (wr[i] - p);
             if (vr == 0.0 && vi == 0.0)
               vr = mach_eps * norm * (fabs(w) + fabs(q) + fabs(x) + fabs(y) + fabs(z));
 
-            COMDIV (x * r - z * ra + q * sa, x * s - z * sa -q * ra, vr, vi, &A[i][na], &A[i][en]);
+            COMDIV (x * r - z * ra + q * sa, x * s - z * sa -q * ra, vr, vi, &A[i*n + na], &A[i*n + en]);
             if (fabs(x) > fabs(z) + fabs(q))
             {
-              A[i+1][na] = (-ra - w * A[i][na] + q * A[i][en]) / x;
-              A[i+1][en] = (-sa - w * A[i][en] - q * A[i][na]) / x;
+              A[(i + 1)*n + na] = (-ra - w * A[i*n + na] + q * A[i*n + en]) / x;
+              A[(i + 1)*n + en] = (-sa - w * A[i*n + en] - q * A[i*n + na]) / x;
             }
             else
             {
-              COMDIV (-r - y * A[i][na], -s - y * A[i][en], z, q, &A[i + 1][na], &A[i+1][en]);
+              COMDIV (-r - y * A[i*n + na], -s - y * A[i*n + en], z, q, &A[i + 1*n + na], &A[i+1*n + en]);
             }
           } /* wi[i] = 0 */
         } /* wi[i] < 0 */
@@ -388,7 +388,7 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
     if (i < low || i > high) /* rows < low and rows > high */
     {
       for (k = i + 1; k < n; k++);
-        Q[i][k] = A[i][k];
+        Q[i*n + k] = A[i*n + k];
     }
   }
 
@@ -408,11 +408,11 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
         y = z = 0.0;
         for (k = low; k <= m; k++)
         {
-          y += Q[i][k] * A[k][l];
-          z += Q[i][k] * A[k][j];
+          y += Q[i*n + k] * A[k*n + l];
+          z += Q[i*n + k] * A[k*n + j];
         }
-        Q[i][l] = y;
-        Q[i][j] = z;
+        Q[i*n + l] = y;
+        Q[i*n + j] = z;
       }
     }
     else
@@ -423,8 +423,8 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
         {
           z = 0.0;
           for (k = low; k <= m; k++)
-            z += Q[i][k] * A[k][j];
-          Q[i][j] = z;
+            z += Q[i*n + k] * A[k*n + j];
+          Q[i*n + j] = z;
         }
       }
     }
@@ -433,8 +433,8 @@ void eig_vectors(double **A, size_t n, size_t low, size_t high,
 
 
 
-void eig_hess(double **A, size_t n, size_t low, size_t high,
-         double *wr, double *wi, int matq, double **Q, size_t *iter, size_t *rc)
+void eig_hess(double *A, size_t n, size_t low, size_t high,
+         double *wr, double *wi, int matq, double *Q, size_t *iter, size_t *rc)
 {
   size_t i, j, m, k, l, na, ll, en;
   int cur_iter, flag, MAXIT;
@@ -451,7 +451,7 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
   {
     if (i < low || i > high)
     {
-      wr[i] = A[i][i];
+      wr[i] = A[i*n + i];
       wi[i] = 0.0;
       iter[i] = 0;
     }
@@ -471,7 +471,7 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
       ll = 0;                          
       for(l = en; l > low; l--) /* search for small subdiagonal element */
       {
-        if (fabs(A[l][l-1]) <= mach_eps * (fabs(A[l-1][l-1]) + fabs(A[l][l])))
+        if (fabs(A[l*n + l - 1]) <= mach_eps * (fabs(A[(l - 1)*n + l - 1]) + fabs(A[l*n + l])))
         {
           ll = l; /* save current index */
           break;
@@ -479,11 +479,11 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
       }
       l = ll; /* restore l */
 
-      x = A[en][en];
+      x = A[en*n + en];
       if (l == en) /* found one evalue */
       {
         wr[en] = x + t;
-        A[en][en] = x + t;
+        A[en*n + en] = x + t;
         wi[en] = 0.0;
         iter[en] = cur_iter;
         if (en > 0) 
@@ -493,8 +493,8 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
         break; /* exit from loop while(1) */
       }
 
-      y = A[na][na];
-      w = A[en][na] * A[na][en];
+      y = A[na*n + na];
+      w = A[en*n + na] * A[na*n + en];
 
       if (l == na) /* found two evalues */
       {
@@ -502,8 +502,8 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
         q = p * p + w;
         z = sqrt(fabs(q));
         x = x + t;
-        A[en][en] = x + t;
-        A[na][na] = y + t;
+        A[en*n + en] = x + t;
+        A[na*n + na] = y + t;
         iter[en] = -cur_iter;
         iter[na] = cur_iter;
         if (q >= 0.0) /* real eigenvalues */
@@ -516,7 +516,7 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
           wr[en] = x - w / z;
           wi[na] = 0.0;
           wi[en] = 0.0;
-          x = A[en][na];
+          x = A[en*n + na];
           r = sqrt(x * x + z * z);
 
           if (matq) 
@@ -525,23 +525,23 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
             q = z / r;
             for(j = na; j < n; j++)
             {
-              z = A[na][j];
-              A[na][j] = q * z + p * A[en][j];
-              A[en][j] = q * A[en][j] - p * z;
+              z = A[na*n + j];
+              A[na*n + j] = q * z + p * A[en*n + j];
+              A[en*n + j] = q * A[en*n + j] - p * z;
             }
 
             for(i = 0; i <= en; i++)
             {
-              z = A[i][na];
-              A[i][na] = q * z + p * A[i][en];
-              A[i][en] = q * A[i][en] - p * z;
+              z = A[i*n + na];
+              A[i*n + na] = q * z + p * A[i*n + en];
+              A[i*n + en] = q * A[i*n + en] - p * z;
             }
 
             if (matq) for(i = low; i <= high; i++)
             {
-              z = Q[i][na];
-              Q[i][na] = q * z + p * Q[i][en];
-              Q[i][en] = q * Q[i][en] - p * z;
+              z = Q[i*n + na];
+              Q[i*n + na] = q * z + p * Q[i*n + en];
+              Q[i*n + en] = q * Q[i*n + en] - p * z;
             }
           } 
         }
@@ -571,8 +571,8 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
       {
         t += x;
         for(i = low; i <= en; i++)
-           A[i][i] -= x;
-        s = fabs(A[en][na]) + fabs(A[na][en-2]);
+           A[i*n + i] -= x;
+        s = fabs(A[en*n + na]) + fabs(A[na*n + en - 2]);
         x = 0.75 * s; 
         y = x;
         w = -0.4375 * s * s;
@@ -582,35 +582,35 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
 
       for(m = en - 1; m > l; m--)
       {
-        z = A[m - 1][m - 1];
+        z = A[(m - 1)*n + m - 1];
         r = x - z;
         s = y - z;
-        p = ( r * s - w ) / A[m][m - 1] + A[m - 1][m];
-        q = A[m][m] - z - r - s;
-        r = A[m + 1][m];
+        p = (r*s - w)/A[m*n + m - 1] + A[(m - 1)*n + m];
+        q = A[m*n + m] - z - r - s;
+        r = A[(m + 1)*n + m];
         s = fabs(p) + fabs(q) + fabs (r);
         p = p / s;
         q = q / s;
         r = r / s;
         if (m == l + 1) break;
-        if (fabs(A[m - 1][m - 2]) * (fabs(q) + fabs(r)) <= mach_eps * fabs(p)
-                 * (fabs(A[m - 2][m - 2]) + fabs(z) + fabs(A[m][m]))) 
+        if (fabs(A[(m - 1)*n + m - 2]) * (fabs(q) + fabs(r)) <= mach_eps * fabs(p)
+                 * (fabs(A[(m - 2)*n + m - 2]) + fabs(z) + fabs(A[m*n + m]))) 
           break;
       }
    
       for(i = m + 1; i <= en; i++)
-        A[i][i - 2] = 0.0;
+        A[i*n + i - 2] = 0.0;
       for(i = m + 2; i <= en; i++)
-        A[i][i - 3] = 0.0;
+        A[i*n + i - 3] = 0.0;
 
       for(k = m - 1; k <= na; k++)
       {
         if (k != m - 1) /* double QR step, for rows l to en */
         {               /* and columns m to en */
-          p = A[k][k - 1];
-          q = A[k + 1][k - 1];
+          p = A[k*n + k - 1];
+          q = A[(k + 1)*n + k - 1];
           if (k != na)
-            r = A[k + 2][k - 1]; 
+            r = A[(k + 2)*n + k - 1]; 
           else 
             r = 0.0;
           x = fabs(p) + fabs(q) + fabs(r);
@@ -625,9 +625,9 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
           s = -s;
 
         if (k != m - 1) 
-          A[k][k - 1] = -s * x;
+          A[k*n + k - 1] = -s * x;
         else if (l != m - 1) 
-          A[k][k - 1] = -A[k][k - 1];
+          A[k*n + k - 1] = -A[k*n + k - 1];
 
         p = p + s;
         x = p / s;
@@ -638,14 +638,14 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
 
         for(j = k; j < n; j++) /* modify rows */
         {
-          p = A[k][j] + q * A[k + 1][j];
+          p = A[k*n + j] + q * A[(k + 1)*n + j];
           if (k != na) 
           {
-            p = p + r * A[k + 2][j];
-            A[k + 2][j] = A[k + 2][j] - p * z;
+            p = p + r * A[(k + 2)*n + j];
+            A[(k + 2)*n + j] = A[(k + 2)*n + j] - p * z;
           }
-          A[k + 1][j] = A[k + 1][j] - p * y;
-          A[k][j]   = A[k][j] - p * x;
+          A[(k + 1)*n + j] = A[(k + 1)*n + j] - p * y;
+          A[k*n + j]   = A[k*n + j] - p * x;
         }
 
         if (k + 3 < en)  
@@ -654,28 +654,28 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
            j = en;
         for(i = 0; i <= j; i++) /* modify columns */
         {
-          p = x * A[i][k] + y * A[i][k+1];
+          p = x * A[i*n + k] + y * A[i*n + k+1];
           if (k != na) 
           {
-            p = p + z * A[i][k+2];
-            A[i][k+2] = A[i][k+2] - p * r;
+            p = p + z * A[i*n + k+2];
+            A[i*n + k+2] = A[i*n + k+2] - p * r;
           }
-          A[i][k+1] = A[i][k+1] - p * q;
-          A[i][k]   = A[i][k] - p;
+          A[i*n + k+1] = A[i*n + k+1] - p * q;
+          A[i*n + k]   = A[i*n + k] - p;
         }
 
         if (matq) /* if eigenvectors are needed */
         {
           for(i = low; i <= high; i++)
           {
-            p = x * Q[i][k] + y * Q[i][k+1];
+            p = x * Q[i*n + k] + y * Q[i*n + k+1];
             if (k != na)
             {
-              p = p + z * Q[i][k+2];
-              Q[i][k+2] = Q[i][k+2] - p * r;
+              p = p + z * Q[i*n + k+2];
+              Q[i*n + k+2] = Q[i*n + k+2] - p * r;
             }
-            Q[i][k+1] = Q[i][k+1] - p * q;
-            Q[i][k]   = Q[i][k] - p;
+            Q[i*n + k+1] = Q[i*n + k+1] - p * q;
+            Q[i*n + k]   = Q[i*n + k] - p;
           }
         }
       } /* k loop */
@@ -693,7 +693,7 @@ void eig_hess(double **A, size_t n, size_t low, size_t high,
 
 
 
-void eig_balance_inverse(double **Q, size_t n, size_t low, size_t high, double *scal)
+void eig_balance_inverse(double *Q, size_t n, size_t low, size_t high, double *scal)
 {
   size_t  i, j, k;
   double s;
@@ -702,7 +702,7 @@ void eig_balance_inverse(double **Q, size_t n, size_t low, size_t high, double *
   {
     s = scal[i];
     for (j = 0; j < n; j++)  
-      Q[i][j] *= s;
+      Q[i*n + j] *= s;
   }
 
   for (i = low; (i--) > 0; )
@@ -710,7 +710,7 @@ void eig_balance_inverse(double **Q, size_t n, size_t low, size_t high, double *
     k = (int)scal[i];    /* round? */
     if (k != i) 
       for (j = 0; j < n; j++)
-        RSWAP(&Q[i][j], &Q[k][j]);
+        RSWAP(&Q[i*n + j], &Q[k*n + j]);
   }
 
   for (i = high + 1; i < n; i++)
@@ -718,7 +718,7 @@ void eig_balance_inverse(double **Q, size_t n, size_t low, size_t high, double *
     k = (int)scal[i];    /* round? */
     if (k != i)
       for (j = 0; j < n; j++)
-        RSWAP(&Q[i][j], &Q[k][j]);
+        RSWAP(&Q[i*n + j], &Q[k*n + j]);
   }
 }
 
@@ -727,7 +727,7 @@ void eig_balance_inverse(double **Q, size_t n, size_t low, size_t high, double *
 
 
 /* Complex absolute value */
-void eig_norm_Inf(double **Q, size_t n, double *wi)
+void eig_norm_Inf(double *Q, size_t n, double *wi)
 {
   double maxi, tr, ti;
   size_t i, j;
@@ -737,37 +737,37 @@ void eig_norm_Inf(double **Q, size_t n, double *wi)
   {
     if (wi[j] == 0.0)
     {
-      maxi = Q[0][j];
+      maxi = Q[j]; /* Q(0, j) */
       for (i = 1; i < n; i++)
       {
-        if (fabs(Q[i][j]) > fabs(maxi))  
-          maxi = Q[i][j];
+        if (fabs(Q[i*n + j]) > fabs(maxi))  
+          maxi = Q[i*n + j];
       }
 
       if (maxi != 0.0)
       {
         maxi = 1.0 / maxi;
         for (i = 0; i < n; i++) 
-           Q[i][j] *= maxi;
+           Q[i*n + j] *= maxi;
       }
     }
     else
     {
-      tr = Q[0][j];
-      ti = Q[0][j + 1];
+      tr = Q[j]; /* Q(0, j) */
+      ti = Q[j + 1]; /* Q(0, j + 1) */
       for (i = 1; i < n; i++)
       {
-        if (COMABS(Q[i][j], Q[i][j + 1]) > COMABS(tr, ti))
+        if (COMABS(Q[i*n + j], Q[i*n + j + 1]) > COMABS(tr, ti))
         { 
-          tr = Q[i][j];
-          ti = Q[i][j + 1];
+          tr = Q[i*n + j];
+          ti = Q[i*n + j + 1];
         }
       }
 
       if (tr != 0.0 || ti != 0.0)
       {
         for (i = 0; i < n; i++)
-          COMDIV(Q[i][j], Q[i][j+1], tr, ti, &(Q[i][j]), &(Q[i][j + 1]));
+          COMDIV(Q[i*n + j], Q[i*n + j+1], tr, ti, &(Q[i*n + j]), &(Q[i*n + j + 1]));
       }
       j++; /* raise j by two */
     }
@@ -777,7 +777,7 @@ void eig_norm_Inf(double **Q, size_t n, double *wi)
 
 
 
-void eig_tridiag_reduction(double **A, size_t n, int matq, double *d, double *a)
+void eig_tridiag_reduction(double *A, size_t n, int matq, double *d, double *a)
 {
     size_t l, k, j, i;
     double scale, hh, h, g, f;
@@ -787,40 +787,40 @@ void eig_tridiag_reduction(double **A, size_t n, int matq, double *d, double *a)
         h = scale = 0.0;
         if (l > 0) {
             for (k = 0; k <= l; k++)
-                scale += fabs(A[i][k]);
+                scale += fabs(A[i*n + k]);
             if (scale == 0.0)
-                a[i] = A[i][l];
+                a[i] = A[i*n + l];
             else {
                 for (k = 0; k <= l; k++) {
-                    A[i][k] /= scale;
-                    h += A[i][k] * A[i][k];
+                    A[i*n + k] /= scale;
+                    h += A[i*n + k] * A[i*n + k];
                 }
-                f = A[i][l];
+                f = A[i*n + l];
                 g = (f >= 0.0 ? -sqrt(h) : sqrt(h));
                 a[i] = scale * g;
                 h -= f * g;
-                A[i][l] = f - g;
+                A[i*n + l] = f - g;
                 f = 0.0;
                 for (j = 0; j <= l; j++) {
-                    A[j][i] = A[i][j]/h;
+                    A[j*n + i] = A[i*n + j]/h;
                     g = 0.0;
                     for (k = 0; k <= j; k++)
-                        g += A[j][k] * A[i][k];
+                        g += A[j*n + k] * A[i*n + k];
                     for (k = j + 1; k <= l; k++)
-                        g += A[k][j] * A[i][k];
+                        g += A[k*n + j] * A[i*n + k];
                     a[j] = g / h;
-                    f += a[j] * A[i][j];
+                    f += a[j] * A[i*n + j];
                 }
                 hh = f / (h + h);
                 for (j = 0; j <= l; j++) {
-                    f = A[i][j];
+                    f = A[i*n + j];
                     a[j] = g = a[j] - hh * f;
                     for (k = 0; k <= j; k++)
-                        A[j][k] -= (f * a[k] + g * A[i][k]);
+                        A[j*n + k] -= (f * a[k] + g * A[i*n + k]);
                 }
             }
         } else
-            a[i] = A[i][l];
+            a[i] = A[i*n + l];
         d[i] = h;
     }
     d[0] = 0.0;
@@ -834,24 +834,24 @@ void eig_tridiag_reduction(double **A, size_t n, int matq, double *d, double *a)
               for (j = 0; j < l; j++) {
                   g = 0.0;
                   for (k = 0; k < l; k++)
-                      g += A[i][k] * A[k][j];
+                      g += A[i*n + k] * A[k*n + j];
                   for (k = 0; k < l; k++)
-                      A[k][j] -= g * A[k][i];
+                      A[k*n + j] -= g * A[k*n + i];
               }
           }
-          d[i] = A[i][i];
-          A[i][i] = 1.0;
+          d[i] = A[i*n + i];
+          A[i*n + i] = 1.0;
           for (j = 0; j < l; j++) 
-              A[j][i] = A[i][j] = 0.0;
+              A[j*n + i] = A[i*n + j] = 0.0;
       }
     else
       for (i = 0; i < n; i++) 
       {
-          d[i] = A[i][i];
+          d[i] = A[i*n + i];
       }
 }
 
-void eig_tridiag(double *d, double *a, size_t n, int matq, double **Q, size_t *rc)
+void eig_tridiag(double *d, double *a, size_t n, int matq, double *Q, size_t *rc)
 {
     size_t m, l, i, k;
     int iter;
@@ -899,9 +899,9 @@ void eig_tridiag(double *d, double *a, size_t n, int matq, double **Q, size_t *r
                     if (matq)
                       for (k = 0; k < n; k++) 
                       {
-                          f = Q[k][i];
-                          Q[k][i] = s * Q[k][i - 1] + c * f;
-                          Q[k][i - 1] = c * Q[k][i - 1] - s * f;
+                          f = Q[k*n + i];
+                          Q[k*n + i] = s * Q[k*n + i - 1] + c * f;
+                          Q[k*n + i - 1] = c * Q[k*n + i - 1] - s * f;
                       }
                 }
                 if (r == 0.0 && i > l) continue;
@@ -1165,17 +1165,17 @@ void eig_hess_old(double **a, size_t n, double *wr, double *wi)
 }
 */
 
-#define EIG_ROTATE(a,i,j,k,l) g=a[i][j];h=a[k][l];a[i][j]=g-s*(h+g*tau);a[k][l]=h+s*(g-h*tau);
+#define EIG_ROTATE(a,i,j,k,l) g=a[i*n + j];h=a[k*n + l];a[i*n + j]=g-s*(h+g*tau);a[k*n + l]=h+s*(g-h*tau);
 
-void eig_jacobi(double **A, size_t n, double *w, int matq, double **Q, int *nrot, int *rc)
+void eig_jacobi(double *A, size_t n, double *w, int matq, double *Q, int *nrot, int *rc, double *work)
 {
 // Функция написана на основе NR jacobi
   size_t i, j, ii;
   int it;
   double tresh, theta, tau, t, sm, s, h, g, c, *b, *z;
 
-  b = nl_dvector_create(n);
-  z = nl_dvector_create(n);
+  b = work;
+  z = work + n;
 
   if (matq) 
      /* initialize Q to identity matrix */
@@ -1183,13 +1183,13 @@ void eig_jacobi(double **A, size_t n, double *w, int matq, double **Q, int *nrot
      {
        for (j = 0; j < n; j++)
          if (i == j) 
-           Q[i][j] = 1.0;
+           Q[i*n + j] = 1.0;
          else
-           Q[i][j] = 0.0;
+           Q[i*n + j] = 0.0;
      }
   for (i = 0; i < n; i++) 
   {
-    b[i] = w[i] = A[i][i];
+    b[i] = w[i] = A[i*n + i];
     z[i] = 0.0;
   }
   *nrot = 0;
@@ -1200,12 +1200,10 @@ void eig_jacobi(double **A, size_t n, double *w, int matq, double **Q, int *nrot
     for (i = 0; i < n - 1; i++) 
     {
       for (j = i + 1; j < n; j++)
-        sm += fabs(A[i][j]);
+        sm += fabs(A[i*n + j]);
     }
     if (sm == 0.0) 
     {
-      nl_dvector_free(z);
-      nl_dvector_free(b);
       *rc = 0;
       return;
     }
@@ -1217,31 +1215,31 @@ void eig_jacobi(double **A, size_t n, double *w, int matq, double **Q, int *nrot
     {
       for (j = i + 1; j < n; j++) 
       {
-        g = 100.0 * fabs(A[i][j]);
+        g = 100.0 * fabs(A[i*n + j]);
         /* after 4 iterations, skip the rotation if the off-diagonal element is small */
         if (it > 4 && (double)(fabs(w[i]) + g) == (double)fabs(w[i])
           && (double)(fabs(w[j]) + g) == (double)fabs(w[j]))
-          A[i][j] = 0.0;
-        else if (fabs(A[i][j]) > tresh) 
+          A[i*n + j] = 0.0;
+        else if (fabs(A[i*n + j]) > tresh) 
         {
           h = w[j] - w[i];
           if ((double)(fabs(h) + g) == (double)fabs(h))
-            t = A[i][j] / h;
+            t = A[i*n + j] / h;
           else 
           {
-            theta = 0.5*h / A[i][j];
+            theta = 0.5*h / A[i*n + j];
             t = 1.0 / (fabs(theta) + sqrt(1.0 + theta*theta));
             if (theta < 0.0) t = -t;
           }
           c = 1.0 / sqrt(1 + t*t);
           s = t*c;
           tau = s / (1.0 + c);
-          h = t*A[i][j];
+          h = t*A[i*n + j];
           z[i] -= h;
           z[j] += h;
           w[i] -= h;
           w[j] += h;
-          A[i][j] = 0.0;
+          A[i*n + j] = 0.0;
           for (ii = 0; ii < i; ii++) 
           {
             EIG_ROTATE(A, ii, i, ii, j)
@@ -1271,8 +1269,6 @@ void eig_jacobi(double **A, size_t n, double *w, int matq, double **Q, int *nrot
     }
   }
 
-  nl_dvector_free(z);
-  nl_dvector_free(b);
   *rc = 1;  // Too many iterations
 }
 #undef EIG_ROTATE

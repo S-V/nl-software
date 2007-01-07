@@ -84,6 +84,9 @@
             - \f$0\f$ при нормальной работе
             - \f$k\f$, если \f$k\f$-е сингулярное число не было определено за \f$30\f$ итераций
 
+   - Рабочий массив:
+     - \f$work\f$ - вектор длины \f$n\f$
+
   Алгоритм состоит из двух частей. На первом этапе отражениями Хаусхолдера
   матрица \f$A\f$ приводится к двухдиагональному виду. На втором этапе вариантом
   \f$QR\f$-алгоритма двухдиагональная матрица приводится к диагональному виду \f$S\f$.
@@ -94,8 +97,8 @@
 
   Дополнительная память: O(n)
 */
-extern void svd_decomp(double** A, size_t m, size_t n, double* w, int matu, double** U, int 
-  matv, double** V, size_t *ierr);
+extern void svd_decomp(double *A, size_t m, size_t n, double* w, int matu, double *U, int 
+  matv, double *V, size_t *ierr, double *work);
 
 
 /**
@@ -166,8 +169,12 @@ extern double svd_cond(double *w, size_t n);
   - Выход: 
      - \f$x\f$ - найденное нормальное псевдорешение, вектор длины \f$n\f$
 
+   - Рабочий массив:
+     - \f$work\f$ - вектор длины \f$n\f$
+
   Трудоемкость: 
 */
-extern void svd_least_squares(double **U, double *w, double **V, size_t m, size_t n, double *b, double *x);
+extern void svd_least_squares(double *U, double *w, double *V, size_t m, size_t n, 
+  double *b, double *x, double *work);
 
 #endif

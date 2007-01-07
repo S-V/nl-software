@@ -9,7 +9,7 @@
 
 int main()
 {
-  double **A, **U, **V, *w, *b, *x;
+  double *A, *U, *V, *w, *b, *x, *work;
   size_t ierr;
   size_t m = 4;
   size_t n = 3;
@@ -20,13 +20,14 @@ int main()
   w = nl_dvector_create(n);
   b = nl_dvector_create(m);
   x = nl_dvector_create(n);
+  work = nl_dvector_create(n);
 
-  A[0][0] = 1; A[0][1] = 5; A[0][2] =  9;   b[0] = 1;
-  A[1][0] = 2; A[1][1] = 6; A[1][2] = 10;   b[1] = 1;
-  A[2][0] = 3; A[2][1] = 7; A[2][2] = 11;   b[2] = 1;
-  A[3][0] = 4; A[3][1] = 8; A[3][2] = 12;   b[3] = 2;
+  A[0] = 1; A[1] = 5;  A[2] =  9;   b[0] = 1;
+  A[3] = 2; A[4] = 6;  A[5] = 10;   b[1] = 1;
+  A[6] = 3; A[7] = 7;  A[8] = 11;   b[2] = 1;
+  A[9] = 4; A[10] = 8; A[11] = 12;  b[3] = 2;
 
-  svd_decomp(A, m, n, w, 1, U, 1, V, &ierr);
+  svd_decomp(A, m, n, w, 1, U, 1, V, &ierr, work);
   if (ierr)
   {
     printf("Сингулярные числа не были найдены ");
@@ -47,7 +48,7 @@ int main()
   nl_dvector_print(w, n, NULL);
 
   svd_correct(w, n, 1e-16);
-  svd_least_squares(U, w, V, m, n, b, x);
+  svd_least_squares(U, w, V, m, n, b, x, work);
 
   printf("\nПравая часть системы:\n");
   nl_dvector_print(b, m, NULL);
@@ -55,12 +56,13 @@ int main()
   printf("\nНормальное псевдорешение:\n");
   nl_dvector_print(x, n, NULL);
 
-  nl_dmatrix_free(A, m);
-  nl_dmatrix_free(U, m);
-  nl_dmatrix_free(V, n);
+  nl_dmatrix_free(A);
+  nl_dmatrix_free(U);
+  nl_dmatrix_free(V);
   nl_dvector_free(w);
   nl_dvector_free(b);
   nl_dvector_free(x);
+  nl_dvector_free(work);
   
   return 0;
 }

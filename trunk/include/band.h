@@ -69,9 +69,11 @@
   Массив \f$b\f$ содержит правую часть системы. Решение возвращается в
   массиве \f$x\f$.
   
+  \f$work\f$ - рабочий массив длины \f$n\f$
+  
   Трудоемкость: \f$8n - 7\f$
 */
-extern void band_tridiag(double *a, double *d, double *c, double *b, double *x, size_t n);
+extern void band_tridiag(double *a, double *d, double *c, double *b, double *x, size_t n, double *work);
 
 /**
   Умножение ленточной матрицы на плотный столбец.
@@ -81,7 +83,7 @@ extern void band_tridiag(double *a, double *d, double *c, double *b, double *x, 
   
   Трудоемкость:
 */
-extern void band_mult_col(double **A, size_t n, size_t m1, size_t m2, double *b, double *c);
+extern void band_mult_col(double *A, size_t n, size_t m1, size_t m2, double *b, double *c);
 
 /**
   \f$LU\f$-разложение ленточной системы.
@@ -100,7 +102,7 @@ extern void band_mult_col(double **A, size_t n, size_t m1, size_t m2, double *b,
   Трудоемкость: 
 */
 
-extern void band_decomp(double **A, size_t n, size_t m1, size_t m2, double **L, size_t *p, int *sgn);
+extern void band_decomp(double *A, size_t n, size_t m1, size_t m2, double *L, size_t *p, int *sgn);
 
 /**
   Решение ленточной системы на основе ее \f$LU\f$-разложения.
@@ -118,6 +120,6 @@ extern void band_decomp(double **A, size_t n, size_t m1, size_t m2, double **L, 
 
   Трудоемкость: 
 */
-extern void band_solve(double **A, size_t n, size_t m1, size_t m2, double **L, size_t *p, double *b);
+extern void band_solve(double *A, size_t n, size_t m1, size_t m2, double *L, size_t *p, double *b);
 
 #endif

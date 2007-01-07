@@ -9,7 +9,7 @@
 
 int main()
 {
-  double **A, *b, *t, *r;
+  double *A, *b, *t, *r, *work;
   size_t m = 4;
   size_t n = 3;
 
@@ -17,11 +17,12 @@ int main()
   b = nl_dvector_create(m);
   t = nl_dvector_create(n);
   r = nl_dvector_create(m);
+  work = nl_dvector_create(m);
 
-  A[0][0] = 1; A[0][1] = 5; A[0][2] =  1;   b[0] = 1;
-  A[1][0] = 2; A[1][1] = 6; A[1][2] = 10;   b[1] = 1;
-  A[2][0] = 3; A[2][1] = 7; A[2][2] = 11;   b[2] = 1;
-  A[3][0] = 4; A[3][1] = 8; A[3][2] = 12;   b[3] = 2;
+  A[0] = 1; A[1]  = 5; A[2]  =  1;   b[0] = 1;
+  A[3] = 2; A[4]  = 6; A[5]  = 10;   b[1] = 1;
+  A[6] = 3; A[7]  = 7; A[8]  = 11;   b[2] = 1;
+  A[9] = 4; A[10] = 8; A[11] = 12;   b[3] = 2;
 
   printf("Матрица A:\n");
   nl_dmatrix_print(A, m, n, NULL);
@@ -37,7 +38,7 @@ int main()
   printf("\nВектор b:\n");
   nl_dvector_print(b, m, NULL);
 
-  qr_least_squares (A, m, n, t, b, r);
+  qr_least_squares(A, m, n, t, b, r, work);
 
   printf("\nПсевдорешение системы Ax = b:\n");
   nl_dvector_print(b, n, NULL);
@@ -45,10 +46,11 @@ int main()
   printf("\nНевязки:\n");
   nl_dvector_print(r, m, NULL);
 
-  nl_dmatrix_free(A, m);
+  nl_dmatrix_free(A);
   nl_dvector_free(b);
   nl_dvector_free(t);
   nl_dvector_free(r);
+  nl_dvector_free(work);
 
   return 0;
 }

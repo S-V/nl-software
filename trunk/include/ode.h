@@ -108,7 +108,7 @@ void ode_rkf45(
 
 void ode_rosenbrock34(
   void (*f)(double, double*, double*), 
-  void (*jacobian)(double, double*, double*, double**), 
+  void (*jacobian)(double, double*, double*, double*), 
   size_t n, 
   double t0, 
   double tout, 
@@ -120,9 +120,9 @@ void ode_rosenbrock34(
   double *y, 
   double *ydot,
   double *fprimet, 
-  double **fprimey, 
+  double *fprimey, 
   int *nfunevals,
-  double **a, 
+  double *a, 
   double *work,
   size_t *p);
 

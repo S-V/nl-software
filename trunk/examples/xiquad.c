@@ -20,7 +20,7 @@ int main()
    b = nl_dvector_create(n - 1);
    c = nl_dvector_create(n - 1);
    d = nl_dvector_create(n);
-   work = nl_dvector_create(2*n);
+   work = nl_dvector_create(3*n);
 
    x[0] = 0.00;
    x[1] = 0.25;

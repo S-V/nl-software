@@ -34,7 +34,7 @@ int main()
 
    t0 = 0;
    tout = 12;
-   h = 12;
+   h = 1;
 
    y0 = nl_dvector_create(n);
    y = nl_dvector_create(n);

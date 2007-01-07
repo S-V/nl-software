@@ -124,10 +124,10 @@ void ode_rkf45(
           return;
        }
 
-       if(err <= abstol + reltol*nl_dvector_norm_inf(y, n)) 
+       if(err <= abstol + reltol*fabs(y[cblas_idamax(n, y, 1)])) 
        {
           t += h;
-          nl_dvector_copy(y0, y, n);
+          cblas_dcopy(n, y, 1, y0, 1);
 
           (*f)(t, y0, ydot);
        }
@@ -159,10 +159,10 @@ void ode_rosenbrock34_step(
   double *y0, 
   double *ydot0,
   double *fprimet0, 
-  double **fprimey0, 
+  double *fprimey0, 
   double *y, 
   double *err,
-  double **a, 
+  double *a, 
   double *work,
   size_t *p)
 {
@@ -181,11 +181,11 @@ void ode_rosenbrock34_step(
    for (i = 0; i < n; i++) 
    {
       for (j = 0; j < n; j++) 
-            a[i][j] = -fprimey0[i][j];
-      a[i][i] += 2/h;
+            a[i*n + j] = -fprimey0[i*n + j];
+      a[i*n + i] += 2/h;
    }
 
-   lu_decomp(a, n, p, &sgn);
+   lu_decomp(a, n, p, &sgn, work);
 
    for (j = 0; j < n; j++)
       g1[j] = ydot0[j] + h*fprimet0[j]/2;
@@ -242,7 +242,7 @@ void ode_rosenbrock34_step(
 
 void ode_rosenbrock34(
   void (*f)(double, double*, double*), 
-  void (*jacobian)(double, double*, double*, double**), 
+  void (*jacobian)(double, double*, double*, double*), 
   size_t n, 
   double t0, 
   double tout, 
@@ -254,9 +254,9 @@ void ode_rosenbrock34(
   double *y, 
   double *ydot,
   double *fprimet, 
-  double **fprimey,
+  double *fprimey,
   int *nfunevals, 
-  double **a, 
+  double *a, 
   double *work,
   size_t *p)
 {
@@ -307,10 +307,11 @@ void ode_rosenbrock34(
           return;
        }
        
-       if (err <= abstol + reltol*nl_dvector_norm_inf(y, n)) 
+       if (err <= abstol + reltol*fabs(y[cblas_idamax(n, y, 1)])) 
        {
           t += h;
-          nl_dvector_copy(y0, y, n);
+          cblas_dcopy(n, y, 1, y0, 1);
+
 
           (*f)(t, y0, ydot);
           (*jacobian)(t, y0, fprimet, fprimey);

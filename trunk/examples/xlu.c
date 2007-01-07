@@ -8,7 +8,7 @@
 
 int main()
 {
-  double **A, *b, cond;
+  double *A, *b, *work, cond;
   size_t *p;
   int sgn;
   size_t n = 3;
@@ -16,15 +16,16 @@ int main()
   A = nl_dmatrix_create(n, n);
   b = nl_dvector_create(n);
   p = nl_xvector_create(n);
+  work = nl_dvector_create(n);
 
-  A[0][0] = .1; A[0][1] =  .5; A[0][2] =  .6;   b[0] = 1.2;
-  A[1][0] = .2; A[1][1] =  .7; A[1][2] =  .9;   b[1] = 1.8;
-  A[2][0] = .3; A[2][1] = 1.1; A[2][2] = 1.3;   b[2] = 2.7;
+  A[0] = .1; A[1] =  .5; A[2] =  .6;   b[0] = 1.2;
+  A[3] = .2; A[4] =  .7; A[5] =  .9;   b[1] = 1.8;
+  A[6] = .3; A[7] = 1.1; A[8] = 1.3;   b[2] = 2.7;
 
   printf("Матрица А:\n");
   nl_dmatrix_print(A, n, n, NULL);
 
-  cond = lu_decomp(A, n, p, &sgn);
+  cond = lu_decomp(A, n, p, &sgn, work);
 
   printf("\nЧисло обусловленности >= %e\n", cond);
 
@@ -44,9 +45,10 @@ int main()
   printf("\nРешение системы Ax = b:\n");
   nl_dvector_print(b, n, NULL);
 
-  nl_dmatrix_free(A, n);
+  nl_dmatrix_free(A);
   nl_dvector_free(b);
   nl_xvector_free(p);
+  nl_dvector_free(work);
 
   return 0;
 }

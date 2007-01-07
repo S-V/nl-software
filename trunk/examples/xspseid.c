@@ -4,7 +4,6 @@
   $Ax=b$
   $  A=  \left(  \begin{array}{rrrrr}     3 & 1 &   &   &   \\     1 & 3 & 1 &   &   \\       & 1 & 3 & 1 &   \\       &   & 1 & 3 & 1 \\       &   &   & 1 & 3 \\  \end{array}  \right)  ,\quad  b=  \left(  \begin{array}{r}     4  \\     5  \\     5  \\     5  \\     4  \\  \end{array}  \right)  $
 */
-#include <stdlib.h>
 #include <string.h> 
 
 #include "nl.h"

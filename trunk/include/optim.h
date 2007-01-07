@@ -84,13 +84,13 @@ double optim_min(double (*fun)(double), double a, double b, double abstol);
     - \f$work\f$ - массив длины \f$4n\f$
 */
 extern 
-void opt_nelder_mead(
+void optim_nelder_mead(
   double (*fun)(double*),
   size_t n,  
   double *x0,
   double *f0,
   int initsimplex,
-  double **x,
+  double *x,
   double *f,
   double tolf, double tolx,
   int maxfunevals, int maxiter,

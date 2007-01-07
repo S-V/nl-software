@@ -58,11 +58,12 @@ void interp_pchip(double *x, double *y, size_t n, double *b, double *c, double *
 
 void interp_spline(double *x, double *y, size_t n, double *b, double *c, double *d, double *work)
 {
-   double *a, *r, delta, delta1, h, h0, h1, hlst, h2ndlst;
+   double *a, *r, delta, delta1, h, h0, h1, hlst, h2ndlst, *triwork;
    size_t j;
   
    a = work;
    r = work + n;
+   triwork = work + 2*n;
 
    /* Вычисляем d[j] (производные) */
 
@@ -102,7 +103,7 @@ void interp_spline(double *x, double *y, size_t n, double *b, double *c, double 
    r[n - 1] = (hlst*hlst*(y[n - 2] - y[n - 3])/h2ndlst
             + (2*b[n - 2] + hlst)*h2ndlst*(y[n - 1] - y[n - 2])/hlst)/b[n - 2];
 
-   band_tridiag(b, a, c, r, d, n);
+   band_tridiag(b, a, c, r, d, n, triwork);
 
    /* Вычисляем b[j] и c[j] */
 
