@@ -23,7 +23,7 @@ double fun(double *x)
 int main(void)
 {
   size_t n;
-  double *x0, **x, *f, *work;
+  double *x0, *x, *f, *work;
   double f0;
   double tolf, tolx;
   int maxfun, maxiter, rc, nfun, niter;
@@ -42,7 +42,7 @@ int main(void)
   maxfun = 200;
   maxiter = 50;
 
-  opt_nelder_mead(fun, n, x0, &f0, 0, x, f, tolf, tolx, maxfun, maxiter, 
+  optim_nelder_mead(fun, n, x0, &f0, 0, x, f, tolf, tolx, maxfun, maxiter, 
     &rc, &nfun, &niter, work);
 
   if (rc)
@@ -66,7 +66,7 @@ int main(void)
   nl_dvector_print(f, n + 1, "  %12.6e");
   
   nl_dvector_free(x0);
-  nl_dmatrix_free(x, n + 1);
+  nl_dmatrix_free(x);
   nl_dvector_free(f);
   nl_dvector_free(work);
 

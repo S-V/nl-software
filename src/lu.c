@@ -1,10 +1,9 @@
-#include "util.h"
-#include "lu.h"
+#include "nl.h"
 
 #define LU_SWAP(a,b,temp) {temp = (a); (a)=(b); (b)=temp;}
 #define LU_SWAPD(a,b) {double temp = (a); (a)=(b); (b)=temp;}
 
-double lu_decomp(double** A, size_t n, size_t* p, int *sgn)
+double lu_decomp(double* A, size_t n, size_t* p, int *sgn, double *work)
 {
   double cond = 0;
   *sgn = 1;
@@ -14,7 +13,7 @@ double lu_decomp(double** A, size_t n, size_t* p, int *sgn)
     size_t y, Pivot;
     double norm_A = 0.;
     double Elem, Pr, t;
-    double* vy = nl_dvector_create(n);
+    double* vy = work;
     double ek, ynorm, znorm;
 
     // Вычисление нормы матрицы A
@@ -22,7 +21,7 @@ double lu_decomp(double** A, size_t n, size_t* p, int *sgn)
     {
       t = 0.;
       for(i = 0; i < n; i++)
-        t += fabs(A[i][j]);
+        t += fabs(A[i*n + j]);
       if(norm_A < t)
         norm_A = t;
     };
@@ -30,11 +29,11 @@ double lu_decomp(double** A, size_t n, size_t* p, int *sgn)
     for(y = 0; y < n-1; y++)
     {
       // поиск максимального элемента в столбце y
-      double Max = fabs(A[y][y]);
+      double Max = fabs(A[y*n + y]);
       Pivot = y;
       for(i = y+1; i < n; i++)
       {
-        Elem = fabs(A[i][y]);
+        Elem = fabs(A[i*n + y]);
         if(Elem >= Max)
         {
           Max = Elem;
@@ -43,21 +42,23 @@ double lu_decomp(double** A, size_t n, size_t* p, int *sgn)
       };
       if(y != Pivot)
       {
-        // перестановка строк Pivot и y
-        double *swap;
-        LU_SWAP(A[Pivot], A[y], swap)
+        // перестановка строк Pivot и y  cblas_dswap(CblasRowMajor, A + pivot*n, 1, A + y*n, 1)
+        for (j = 0; j < n; j++)
+        {
+           LU_SWAPD(A[Pivot*n + j], A[y*n + j])
+        }
         *sgn = -*sgn;
       }
       p[y] = Pivot;
       if(Max > 0)
       {
-        Pr = 1./A[y][y];
+        Pr = 1./A[y*n + y];
         for(j = y+1; j < n; j++)
         {
-          A[j][y] *= Pr;
-          t = A[j][y];
+          A[j*n + y] *= Pr;
+          t = A[j*n + y];
           for(i = y+1; i < n; i++)
-            A[j][i] -= t*A[y][i];
+            A[j*n + i] -= t*A[y*n + i];
         }
       };
     }
@@ -67,22 +68,21 @@ double lu_decomp(double** A, size_t n, size_t* p, int *sgn)
     {
       t = 0.;
       for(i = 0; i<k; i++)
-        t += A[i][k]*vy[i];
+        t += A[i*n + k]*vy[i];
       ek = (t >= 0.)? 1. : -1.;
       /*
-      if(A[k][k] == 0.)
+      if(A[k*n + k] == 0.)
       {
-        nl_dvector_free(vy);
         return MAX_DOUBLE;
       }
       */
-      vy[k] = -(ek+t)/A[k][k];
+      vy[k] = -(ek+t)/A[k*n + k];
     };
     for(k = n-1; ; k--)
     {
       t = 0.;
       for(i = k+1; i<n; i++)
-        t += A[i][k]*vy[i];
+        t += A[i*n + k]*vy[i];
       vy[k] -= t;
       if(k == 0) break;
     };
@@ -104,14 +104,13 @@ double lu_decomp(double** A, size_t n, size_t* p, int *sgn)
     cond = norm_A*znorm/ynorm;
     if (cond < 1.) cond = 1.;
     
-    nl_dvector_free(vy);
   }
-  p[n-1] = 0;
+  p[n - 1] = 0;
   return cond;
 }
 
 
-void lu_solve(double** LU, size_t n, size_t* p, double* b)
+void lu_solve(double* LU, size_t n, size_t* p, double* b)
 {
   size_t i, ip, j;
   double t;
@@ -120,7 +119,7 @@ void lu_solve(double** LU, size_t n, size_t* p, double* b)
   {
     for(i = 0; i < n - 1; i++)
     {
-      ip    = p[i];
+      ip = p[i];
       LU_SWAPD(b[ip], b[i])
     }
 
@@ -128,33 +127,33 @@ void lu_solve(double** LU, size_t n, size_t* p, double* b)
     {
       t = b[i];
       for(j = i+1; j < n; j++)
-        b[j] -= LU[j][i]*t;
+        b[j] -= LU[j*n + i]*t;
     }
     for(i = n-1; i >= 1; i--)
     {
-      b[i] /= LU[i][i];
+      b[i] /= LU[i*n + i];
       t = -b[i];
       for(j = 0; j < i; j++)
-        b[j] += LU[j][i]*t;
+        b[j] += LU[j*n + i]*t;
     };
   }
-  b[0] /= LU[0][0];
+  b[0] /= LU[0];
 }
 
-double lu_det(double** LU, size_t n, int sgn)
+double lu_det(double* LU, size_t n, int sgn)
 {
   size_t i;
-  double det = LU[0][0]*sgn;
+  double det = LU[0]*sgn;
   for(i = 1; i < n; i++)
-    det *= LU[i][i];
+    det *= LU[i*n + i];
   return det;
 }
 
 
-void lu_invert(double** LU, size_t n, size_t* p, double** B)
+void lu_invert(double* LU, size_t n, size_t* p, double* B, double *work)
 {
-  size_t i,j;
-  double* col = nl_dvector_create(n);
+  size_t i, j;
+  double* col = work;
   for(j = 0; j < n; j++)
   {
     for(i = 0; i<n; i++)
@@ -162,49 +161,48 @@ void lu_invert(double** LU, size_t n, size_t* p, double** B)
     col[j] = 1.;
     lu_solve(LU, n, p, col);
     for(i = 0; i<n; i++)
-      B[i][j] = col[i];
+      B[i*n + j] = col[i];
   };
-  nl_dvector_free(col);
 }
 
-void lu_improve(double** LU, size_t n, size_t* p, double* b, double* x, double* r)
+void lu_improve(double* LU, size_t n, size_t* p, double* b, double* x, double* r)
 {
   lu_mult_col(LU, n, p, x, r);
-  nl_dvector_sub(r, b, n);
+  cblas_daxpy(n, -1, b, 1, r, 1);
   lu_solve(LU, n, p, r);
-  nl_dvector_sub(x, r, n);  
+  cblas_daxpy(n, -1, r, 1, x, 1);
 
   lu_mult_col(LU, n, p, x, r);
-  nl_dvector_sub(r, b, n);
+  cblas_daxpy(n, -1, b, 1, r, 1);
 }
 
-void lu_mult_col(double** LU, size_t n, size_t* p, double* v, double* res)
+void lu_mult_col(double* LU, size_t n, size_t* p, double* v, double* res)
 {
-  double* vv = nl_dvector_create(n);
-  size_t i,j,ip;
+  size_t i, j, ip;
   double t;
-  // vv = U*v
+
+  // res = U*v
   for(j = 0; j < n; j++)
   {
     t = 0.;
     for(i = j; i < n; i++)
-      t+= LU[j][i]*v[i];
-    vv[j] = t;
-  };
-
-  // L*vv
-  for(j = 0; j < n; j++)
-  {
-    t = vv[j];
-    for(i = 0; i < j; i++)
-      t+= LU[j][i]*vv[i];
+      t+= LU[j*n + i]*v[i];
     res[j] = t;
   };
-  // перестановка элементов в v в соответсвии с p
+
+  // res = L*res
+  for(j = n; j > 0; j--)
+  {
+    t = res[j - 1];
+    for(i = 0; i < j - 1; i++)
+      t += LU[(j - 1)*n + i]*res[j - 1];
+    res[j - 1] = t;
+  };
+
+  // перестановка элементов в res в соответсвии с p
   for(i = 0; i < n - 1; i++)
   {
     if(i != (ip = p[i]))
       LU_SWAPD(res[ip], res[i])
   }
-  nl_dvector_free(vv);
 }

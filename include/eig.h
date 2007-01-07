@@ -60,7 +60,7 @@
   на ортогональную матрицу \f$Q\f$, в противном случае в \f$A\f$ - ``случайные'' значения. 
 */
 
-extern void eig_tridiag_reduction(double **A, size_t n, int matq, double *d, double *a);
+extern void eig_tridiag_reduction(double *A, size_t n, int matq, double *d, double *a);
 
 /**
   Собственные числа симметричной трехдиагональной системы.
@@ -86,7 +86,7 @@ extern void eig_tridiag_reduction(double **A, size_t n, int matq, double *d, dou
   чисел было потрачено более \f$30\f$ итераций. В этом случае \f$rc\f$ возвращает
   количество верно найденных собственных чисел (и векторов).  
 */
-extern void eig_tridiag(double *d, double *a, size_t n, int matq, double **Q, size_t *rc);
+extern void eig_tridiag(double *d, double *a, size_t n, int matq, double *Q, size_t *rc);
 
 /**
   Метод Якоби решения симметричной проблемы собственных значений.
@@ -105,8 +105,11 @@ extern void eig_tridiag(double *d, double *a, size_t n, int matq, double **Q, si
   В противном случае число итераций превысило 50
   и в \f$rc\f$ возвращается \f$1\f$.
 
+  \f$work\f$ - рабочий массив длины \f$2n\f$
+
 */
-extern void eig_jacobi(double **A, size_t n, double *w, int matq, double **Q, int *nrot, int *rc);
+extern void eig_jacobi(double *A, size_t n, double *w, int matq, double *Q, int *nrot, int *rc,
+  double *work);
 
 
 /** 
@@ -123,7 +126,7 @@ extern void eig_jacobi(double **A, size_t n, double *w, int matq, double **Q, in
   равны соответствующим собственным векторам, на остальных позициях ---
   соответствующим масштабным множителям.
 */
-extern void eig_balance(double **A, size_t n, size_t *low, size_t *high, double *scal);
+extern void eig_balance(double *A, size_t n, size_t *low, size_t *high, double *scal);
 
 
 /**
@@ -133,9 +136,9 @@ extern void eig_balance(double **A, size_t n, size_t *low, size_t *high, double 
   приводится к верхней форме Хессенберга. На выходе элементы верхнего треугольника
   и поддиагонали матрицы \f$A\f$ хранят соответствующие элементы матрицы Хессенберга.
   Остальные элементы хранят дополнительную информацию. На выходе \f$perm\f$ ---
-  вектор перестановок --- в дальнейшем используется функцией #elmtrans
+  вектор перестановок --- в дальнейшем используется функцией #eig_hess_transform_matrix
 */
-extern void eig_hess_reduction(double **A, size_t n, size_t low, size_t high, size_t *perm);
+extern void eig_hess_reduction(double *A, size_t n, size_t low, size_t high, size_t *perm);
 
 /**
   Трансформирующая матрица к верхней форме Хессенберга.
@@ -146,8 +149,8 @@ extern void eig_hess_reduction(double **A, size_t n, size_t low, size_t high, si
   На входе параметры \f$low\f$, \f$high\f$ --- из функции #eig_balance,
   \f$A\f$, \f$perm\f$ --- из #eig_hess
 */
-extern void eig_hess_transform_matrix(double **A, size_t n, size_t low, size_t high, 
-                               size_t *perm, double **Q);
+extern void eig_hess_transform_matrix(double *A, size_t n, size_t low, size_t high, 
+                               size_t *perm, double *Q);
 
 
 /**
@@ -170,8 +173,8 @@ extern void eig_hess_transform_matrix(double **A, size_t n, size_t low, size_t h
   В противном случае число итераций превысило 30
   и в \f$rc\f$ возвращается количество верно найденных собственных чисел.
 */
-extern void eig_hess(double **A, size_t n, size_t low, size_t high,
-         double *wr, double *wi, int matq, double **Q, size_t *iter, size_t *rc);
+extern void eig_hess(double *A, size_t n, size_t low, size_t high,
+         double *wr, double *wi, int matq, double *Q, size_t *iter, size_t *rc);
 
 
 /**
@@ -180,7 +183,7 @@ extern void eig_hess(double **A, size_t n, size_t low, size_t high,
   По собственным векторам \f$Q\f$, найденным для сбалансированной матрицы \f$A\f$,
   находит собственные векторы исходной матрицы.
 */
-extern void eig_balance_inverse(double **Q, size_t n, size_t low, size_t high, double *scal);
+extern void eig_balance_inverse(double *Q, size_t n, size_t low, size_t high, double *scal);
 
 
 /**
@@ -188,7 +191,7 @@ extern void eig_balance_inverse(double **Q, size_t n, size_t low, size_t high, d
 
   Нормировка собственных векторов по их чебышевой (Inf) норме.
 */
-extern void eig_norm_Inf(double **Q, size_t n, double *wi);
+extern void eig_norm_Inf(double *Q, size_t n, double *wi);
 
 /**
   Вычисление собственных векторов по методу обратной итерации.
@@ -196,8 +199,8 @@ extern void eig_norm_Inf(double **Q, size_t n, double *wi);
   Вычисление собственных векторов матрицы Хессенберга по собственным числам.
   Автоматически вызывается функцией #eig_hess, если vec == 1
 */
-extern void eig_vectors(double **A, size_t n, size_t low, size_t high, 
-             double *wr, double *wi, double **Q);
+extern void eig_vectors(double *A, size_t n, size_t low, size_t high, 
+             double *wr, double *wi, double *Q);
 
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -213,9 +216,9 @@ extern void eig_vectors(double **A, size_t n, size_t low, size_t high,
   функции не меняет этой матрицы. Параметр RADIX должен равняться основанию
   машинной арифметики.
 */
-
+/*
 void eig_balance_old(double **a, size_t n);
-
+*/
 
 /*
   Приведение матрицы к форме Хессенберга.
@@ -225,9 +228,9 @@ void eig_balance_old(double **a, size_t n);
   в ячейках \f$a[i][j]\f$ где \f$i \le j + 1\f$. Остальные элементы равны нулю,
   хотя соответствующие элементы в матрице \f$A\f$ "случайны".
 */
-
+/*
 void eig_hess_reduction_old(double **a, size_t n);
-    
+*/    
 
 /*
   Функция находит все собственные числа матрицы Хессенберга \f$A\f$. 
@@ -235,7 +238,7 @@ void eig_hess_reduction_old(double **a, size_t n);
   Вещественные и мнимые части собственных чисел возвращаются в векторах
   \f$wr\f$ и \f$Wi\f$.
 */
-
+/*
 void eig_hess_old(double **a, size_t n, double *wr, double *wi);
-
+*/
 #endif

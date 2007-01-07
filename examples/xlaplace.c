@@ -7,10 +7,10 @@
 int main()
 {
   size_t *IA, *JA, m, n, N, nz;
-  double *AN, *AD, **A;
+  double *AN, *AD, *A;
 
   m = n = 3;
-  N = m * n;
+  N = m*n;
 
   printf("5-точечная аппроксимация уравнения Пуассона\n");
   printf("Решетка 3x3\n");
@@ -47,7 +47,7 @@ int main()
   nl_dvector_print(AD, N, NULL);
 
   sp_free_sym(IA, JA, AN, AD);
-  nl_dmatrix_free(A, N);
+  nl_dmatrix_free(A);
 
   return 0;
 }

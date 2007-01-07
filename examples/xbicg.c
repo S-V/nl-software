@@ -3,7 +3,6 @@
   Метод бисопряженных градиентов
   $  A=  \left(  \begin{array}{rrrrr}    31 & 4 &   &   &   \\     24 & 4 & 21 &   &   \\       & 31 & 31 & 1 &   \\       &   & 41 & 1 & 1 \\       &   &   & 31 & 1 \\  \end{array}  \right)  ,\quad  b=  \left(  \begin{array}{r}     35 \\     49  \\     63  \\     43  \\     32  \\  \end{array}  \right)  $
 */
-#include <stdlib.h>
 #include <string.h> 
 
 #include "nl.h"

@@ -4,7 +4,6 @@
   в виде списка ненулевых элементов и обратно
   $A=  \left(  \begin{array}{rrrrr}    1 & -1 &    &    &    \\   -5 &  2 & -2 &    &    \\      & -6 &  3 & -3 &    \\      &    & -7 &  4 & -4 \\      &    &    & -8 &  5 \\  \end{array}  \right).  $
 */
-#include <stdlib.h>
 #include <string.h> 
 
 #include "nl.h"
@@ -17,15 +16,16 @@ int main()
   size_t I[] = {0, 1, 2, 3, 4, 0, 1, 2, 3, 1, 2, 3, 4};
   size_t J[] = {0, 1, 2, 3, 4, 1, 2, 3, 4, 0, 1, 2, 3};
   size_t *IA, *JA;
-  double *AN, **AF;
+  double *AN, *AF;
 
   sp_create(n, nz, &IA, &JA, &AN);
   sp_convert(nz, A, I, J, n, IA, JA, AN);
 
-  printf("Разреженное представление:\n");
-  sp_print_list(IA, JA, AN, n, n, NULL, NULL);
   printf("\nПредставление в виде ");
   printf("списка ненулевых элементов:\n");
+  sp_print_list(IA, JA, AN, n, n, NULL, NULL);
+
+  printf("Разреженное представление:\n");
   sp_print(IA, JA, AN, n, n, NULL);
 
   printf("\nПлотное представление:\n");
@@ -34,7 +34,7 @@ int main()
   nl_dmatrix_print(AF, n, n, NULL);
 
   sp_free(IA, JA, AN);
-  nl_dmatrix_free(AF, n);
+  nl_dmatrix_free(AF);
 
   return 0;
 }

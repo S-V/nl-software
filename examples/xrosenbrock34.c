@@ -2,21 +2,21 @@
 #include <math.h>
 #include "nl.h"
 
-void jac(double t, double* y, double* fprimet, double** fprimey)
+void jac(double t, double* y, double* fprimet, double* fprimey)
 {
    fprimet[0] = 0;
    fprimet[1] = 0;
    fprimet[2] = 0;
 
-   fprimey[0][0] = -0.013 - 1000*y[2];
-   fprimey[0][1] = 0;
-   fprimey[0][2] = -1000*y[0];
-   fprimey[1][0] = 0;
-   fprimey[1][1] = -2500*y[2];
-   fprimey[1][2] = -2500*y[1];
-   fprimey[2][0] = -0.013 - 1000*y[2];
-   fprimey[2][1] = -2500*y[2];
-   fprimey[2][2] = -1000*y[0] - 2500*y[1];
+   fprimey[0] = -0.013 - 1000*y[2];
+   fprimey[1] = 0;
+   fprimey[2] = -1000*y[0];
+   fprimey[3] = 0;
+   fprimey[4] = -2500*y[2];
+   fprimey[5] = -2500*y[1];
+   fprimey[6] = -0.013 - 1000*y[2];
+   fprimey[7] = -2500*y[2];
+   fprimey[8] = -1000*y[0] - 2500*y[1];
 }
 
 void fun(double t, double* y, double* ydot)
@@ -31,7 +31,7 @@ int main()
 {
    size_t n, *p;
    double t, t0, tout, h;
-   double *y0, *ydot, *y, *fprimet, *work, **a, **fprimey;
+   double *y0, *ydot, *y, *fprimet, *work, *a, *fprimey;
    int rc, nfunevals, totalnfunevals;
 
    n = 3;
@@ -48,7 +48,7 @@ int main()
 
    t0 = 0;
    tout = 50;
-   h = 1;
+   h = 5;
 
    y0[0] = 1;
    y0[1] = 1;
@@ -89,8 +89,8 @@ int main()
    nl_dvector_free(fprimet);
    nl_dvector_free(work);
 
-   nl_dmatrix_free(a, n);
-   nl_dmatrix_free(fprimey, n);
+   nl_dmatrix_free(a);
+   nl_dmatrix_free(fprimey);
 
    nl_xvector_free(p);
 

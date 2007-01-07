@@ -21,6 +21,12 @@
 #include "interp.h"
 #include "roots.h"
 
+#include "clapack/f2c.h"
+#include "clapack/blaswrap.h"
+#include "clapack/cblas.h"
+#include "clapack/clapack.h"
+
+
 #define NL_MIN(a, b)  (((a) < (b))? (a):(b))
 #define NL_MAX(a, b)  (((a) > (b))? (a):(b))
 #define NL_SIGN(a)  (((a) > 0)? 1:(((a) < 0)? -1:0))

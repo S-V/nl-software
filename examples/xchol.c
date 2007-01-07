@@ -9,22 +9,30 @@
 
 int main()
 {
-  double **A, *b;
+  double *A, *b;
+  int rc;
   size_t n = 3;
 
   A = nl_dmatrix_create(n, n);
   b = nl_dvector_create(n);
 
-  A[0][0] = .1; A[0][1] = .2; A[0][2] =  .3;   b[0] =  .6;
-  A[1][0] = .2; A[1][1] = .7; A[1][2] =  .9;   b[1] = 1.8;
-  A[2][0] = .3; A[2][1] = .9; A[2][2] = 1.3;   b[2] = 2.5;
+  A[0] = .1; A[1] = .2; A[2] =  .3;   b[0] =  .6;
+  A[3] = .2; A[4] = .7; A[5] =  .9;   b[1] = 1.8;
+  A[6] = .3; A[7] = .9; A[8] = 1.3;   b[2] = 2.5;
 
   printf("Матрица A:\n");
   nl_dmatrix_print(A, n, n, NULL);
 
-  chol_decomp(A, n); 
+  rc = chol_decomp(A, n);
 
-  printf("\nРазложение Холецкого:\n");
+  if (rc != 0)
+  {
+    printf("\nМатрица не является положительно определенной.\n");
+    printf("\nРазложение Холецкого не возможно\n");
+    return -1;
+  }
+
+  printf("\nМножитель Холецкого\n");
   printf("\n(в нижней треугольной части):\n");
   nl_dmatrix_print(A, n, n, NULL);
 
@@ -36,7 +44,7 @@ int main()
   printf("\nРешение системы Ax = b:\n");
   nl_dvector_print(b, n, NULL);
 
-  nl_dmatrix_free(A, n);
+  nl_dmatrix_free(A);
   nl_dvector_free(b);
 
   return 0;

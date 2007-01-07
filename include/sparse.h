@@ -79,14 +79,53 @@ extern void sp_create_sym(size_t n, size_t nz, size_t **IA, size_t **JA, double 
 
 
 /**
-  Возвращает число ненулевых элементов в разреженном представлении матрицы.
+  Число ненулевых элементов в разреженном представлении матрицы.
   - Вход:
      - \f$m\f$ - число строк матрицы \f$A\f$
-	 - \f$IA\f$ - массив описания строк в RR(C)U-формате
+     - \f$IA\f$ - массив описания строк в RR(C)U-формате
   - Результат:
      - число ненулевых элементов 
 */
 extern size_t sp_nz(size_t m, size_t* IA);
+
+/**
+  Число ненулевых элементов в плотной матрице.
+  - Вход:
+     - \f$A\f$ - матрица
+     - \f$m\f$ - число строк матрицы
+     - \f$n\f$ - число столбцов матрицы
+     - \f$eps\f$ - все элементы матрицы, по модулю меньшие \f$eps\f$,
+       считаются равными нулю
+  - Результат:
+     - число ненулевых элементов 
+*/
+extern size_t sp_nz_full(double *A, size_t m, size_t n, double eps);
+
+/**
+  Число ненулевых элементов над диагональю в плотной квадратной матрице.
+  - Вход:
+     - \f$A\f$ - матрица
+     - \f$n\f$ - порядок матрицы
+     - \f$eps\f$ - все элементы матрицы, по модулю меньшие \f$eps\f$,
+       считаются равными нулю
+  - Результат:
+     - число ненулевых элементов над диагональю
+*/
+extern size_t sp_nz_up(double *A, size_t n, double eps);
+
+
+/**
+  Число ненулевых элементов под диагональю в плотной квадратной матрице.
+  - Вход:
+     - \f$A\f$ - матрица
+     - \f$n\f$ - порядок матрицы
+     - \f$eps\f$ - все элементы матрицы, по модулю меньшие \f$eps\f$,
+       считаются равными нулю
+  - Результат:
+     - число ненулевых элементов под диагональю
+*/
+extern size_t sp_nz_low(double *A, size_t n, double eps);
+
 
 /**
   Конвертация плотного представления матрицы общего вида в разреженное.
@@ -100,7 +139,7 @@ extern size_t sp_nz(size_t m, size_t* IA);
   
   Трудоемкость: 
 */
-extern void sp_sparse(double** A, size_t m, size_t n, size_t** IA, size_t** JA, double** AN, double eps);
+extern void sp_sparse(double *A, size_t m, size_t n, size_t** IA, size_t** JA, double** AN, double eps);
 
 
 /**
@@ -114,7 +153,7 @@ extern void sp_sparse(double** A, size_t m, size_t n, size_t** IA, size_t** JA, 
 
   Трудоемкость: 
 */
-extern void sp_sparse_sym(double** A, size_t n, size_t** IA, size_t** JA, double** AN, double** AD, double eps);
+extern void sp_sparse_sym(double* A, size_t n, size_t** IA, size_t** JA, double** AN, double** AD, double eps);
 
 /**
   Конвертация разреженного представления матрицы общего вида в плотное.
@@ -127,7 +166,7 @@ extern void sp_sparse_sym(double** A, size_t n, size_t** IA, size_t** JA, double
 
   Трудоемкость: 
 */
-extern void sp_full(size_t* IA, size_t* JA, double* AN, size_t m, size_t n, double** A);
+extern void sp_full(size_t* IA, size_t* JA, double* AN, size_t m, size_t n, double* A);
 
 /**
   Конвертация разреженного представления симметричной матрицы в плотное.
@@ -139,7 +178,7 @@ extern void sp_full(size_t* IA, size_t* JA, double* AN, size_t m, size_t n, doub
 
   Трудоемкость: 
 */
-extern void sp_full_sym(size_t* IA, size_t* JA, double* AN, double* AD, size_t n, double** A);
+extern void sp_full_sym(size_t* IA, size_t* JA, double* AN, double* AD, size_t n, double* A);
 
 
 /**
@@ -299,43 +338,6 @@ extern void sp_fprint(FILE* file, size_t* IA, size_t* JA, double* AN, size_t m, 
 extern void sp_fprint_list(FILE* file, size_t* IA, size_t* JA, double* AN, size_t m, size_t n, const char* xformat, const char* dformat);
 
 
-/**
-  Чтение разреженной матрицы с клавиатуры.
-  Функция считывает с клавиатуры число строк и число столбцов, размещает 
-  память под структуру хранения разреженной матрицы, а затем
-  считывает векторы представления разреженной матрицы.
-  - Вход: 
-  - Выход: 
-         - \f$IA\f$, \f$JA\f$, \f$AN\f$ - разреженное представление матрицы в RR(C)U-формате
-         - \f$m\f$ - число строк матрицы \f$A\f$                     
-         - \f$n\f$ - число столбцов матрицы \f$A\f$                  
-  - Результат:
-         \f$0\f$, если произошла ошибка, и не \f$0\f$ если функция успешно завершилась.
-*/
-extern int sp_scan(size_t** IA, size_t** JA, double** AN, size_t* m, size_t* n);
-
-/**
-  Чтение разреженной матрицы из файла.
-  Функция считывает с клавиатуры число строк и число столбцов, размещает 
-  память под структуру хранения разреженной матрицы, а затем
-  считывает векторы представления разреженной матрицы.
-  - Вход: 
-  - Выход: 
-         - \f$file\f$ - файл
-         - \f$IA\f$, \f$JA\f$, \f$AN\f$ - разреженное представление матрицы в RR(C)U-формате
-         - \f$m\f$ - число строк матрицы \f$A\f$                     
-         - \f$n\f$ - число столбцов матрицы \f$A\f$                  
-  - Результат:
-         \f$0\f$, если произошла ошибка, и не \f$0\f$ если функция успешно завершилась.
-*/
-extern int sp_fscan(FILE* file, size_t** IA, size_t** JA, double** AN, size_t* m, size_t* n);
-
-
-
-
-
-
-
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -401,40 +403,6 @@ extern void sp_fprint_sym(FILE* file, size_t* IA, size_t* JA, double* AN, double
 */
 extern void sp_fprint_list_sym(FILE* file, size_t* IA, size_t* JA, double* AN, double* AD, size_t n, const char* xformat, const char* dformat);
 
-/**
-  Чтение разреженной матрицы с клавиатуры.
-  Функция считывает с клавиатуры число строк/столбцов, размещает 
-  память под структуру хранения разреженной матрицы, а затем
-  считывает вектора представляения разреженной матрицы.
-  - Вход: 
-  - Выход: 
-         - \f$IA\f$, \f$JA\f$, \f$AN\f$, \f$AD\f$ - разреженное представление матрицы в RR(C)U-формате
-         - \f$n\f$ - число строк/столбцов матрицы \f$A\f$
-  - Результат:
-         \f$0\f$, если произошла ошибка, и не \f$0\f$ если функция успешно завершилась.
-*/
-extern int sp_scan_sym(size_t** IA, size_t** JA, double** AN, double** AD, size_t* n);
-
-/**
-  Чтение разреженной матрицы из файла.
-  Функция считывает из файла число строк/столбцов, размещает 
-  память под структуру хранения разреженной матрицы, а затем
-  считывает вектора представляения разреженной матрицы.
-  - Вход: 
-  - Выход: 
-         - \f$file\f$ - файл
-         - \f$IA\f$, \f$JA\f$, \f$AN\f$, \f$AD\f$ - разреженное представление матрицы в RR(C)U-формате
-         - \f$n\f$ - число строк/столбцов матрицы \f$A\f$
-  - Результат:
-         \f$0\f$, если произошла ошибка, и не \f$0\f$ если функция успешно завершилась.
-*/
-extern int sp_fscan_sym(FILE* file, size_t** IA, size_t** JA, double** AN, double** AD, size_t* n);
-
-
-
-
-
-
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -465,16 +433,18 @@ extern void sp_transpose(size_t* IA, size_t* JA, double* AN, size_t m, size_t n,
          - \f$IB\f$, \f$JB\f$ - портрет матрицы \f$B\f$ в RR(C)U-формате
          - \f$m\f$ - число строк матриц \f$A\f$ и \f$B\f$                     
          - \f$n\f$ - число столбцов матриц \f$A\f$ и \f$B\f$                  
-         - \f$size_C\f$ - размер массива \f$JC\f$. Если размер не достаточен, программа 
-		 аварийно завершит работу, с кодом #nl_err_inconsistent_size
+         - \f$size_C\f$ - размер массива \f$JC\f$. Если размер не достаточен, 
+                 функция возвращает \f$0\f$
   - Выход: 
          - \f$IC\f$, \f$JC\f$ - портрет суммы \f$A+B\f$ в RR(C)U-формате 
   - Результат:
          \f$0\f$, если произошла ошибка, и не \f$0\f$ если функция успешно завершилась.
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$n\f$
 
   Трудоемкость:
 */
-extern int sp_add_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t n, size_t* IC, size_t* JC, size_t size_C);
+extern int sp_add_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t n, size_t* IC, size_t* JC, size_t size_C, size_t *xwork);
 
 
 /**
@@ -487,10 +457,12 @@ extern int sp_add_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m,
          - \f$n\f$ - число столбцов матриц \f$A\f$, \f$B\f$, \f$C\f$
   - Выход: 
          - \f$CN\f$ - численные значения ненулевых элементов суммы \f$A+B\f$
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$n\f$
 
   Трудоемкость:
 */
-extern void sp_add_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, double* BN, size_t m, size_t n, size_t* IC, size_t* JC, double* CN);
+extern void sp_add_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, double* BN, size_t m, size_t n, size_t* IC, size_t* JC, double* CN, double *work);
 
 /**
   Умножение разреженной матрицы на плотный столбец.
@@ -546,10 +518,13 @@ extern void sp_mult_col_sym(size_t* IA, size_t* JA, double* AN, double* AD, doub
          - \f$IC\f$, \f$JC\f$ - портрет произведения \f$A \cdot B\f$ в RR(C)U-формате 
   - Результат:
          \f$0\f$, если произошла ошибка, и не \f$0\f$ если функция успешно завершилась.
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$k\f$
 
   Трудоемкость:
 */
-extern int sp_mult_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t k, size_t* IC, size_t* JC, size_t size_C);
+extern int sp_mult_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t k, size_t* IC, size_t* JC, size_t size_C,
+  size_t *xwork);
 
 /**
   Численное умножение разреженных матриц.
@@ -561,10 +536,12 @@ extern int sp_mult_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m
          - \f$k\f$ - число столбцов матриц \f$B\f$ и \f$A\cdot B\f$
   - Выход: 
          - \f$CN\f$ - численные значения ненулевых элементов произведения \f$A\cdot B\f$
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$k\f$
 
   Трудоемкость:
 */
-extern void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, double* BN, size_t* IC, size_t* JC, size_t m, size_t k, double* CN);
+extern void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, double* BN, size_t* IC, size_t* JC, size_t m, size_t k, double* CN, double *work);
 
 
 /**
@@ -584,10 +561,12 @@ extern void sp_row_nz_sym(size_t* IA, size_t* JA, size_t n, size_t* nz);
          - \f$n\f$ - порядок матрицы \f$A\f$
   - Выход: 
          - вектор перестановок
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$n\f$
 
   Трудоемкость: \f$nz\log(nz) + n\f$
 */
-extern void sp_colperm_sym(size_t* IA, size_t* JA, size_t n, size_t* p);
+extern void sp_colperm_sym(size_t* IA, size_t* JA, size_t n, size_t* p, size_t *xwork);
 
 /**
 Перестановка строк и столбцов симметричной матрицы
@@ -629,10 +608,13 @@ extern void sp_permute_sym(
          - \f$IU\f$, \f$JU\f$ - портрет матрицы \f$U\f$ в RR(U)U-формате
   - Результат:
          \f$0\f$, если произошла ошибка, и не \f$0\f$ если функция успешно завершилась.
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$n\f$
 
   Трудоемкость:
 */
-extern int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_t size_U);
+extern int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_t size_U,
+  size_t *xwork);
 
 /**
   Численное треугольное разложение (Холецкого) разреженной симметричной
@@ -646,9 +628,12 @@ extern int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU
   - Выход: 
          - \f$UN\f$ - численные значения ненулевых элементов матрицы \f$U\f$
          - \f$DINV\f$ - значения диагональных элементов матрицы, обратной к \f$D\f$
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$2n\f$
   Трудоемкость:
 */
-extern void sp_chol_num(size_t* IA, size_t* JA, double* AN, double* AD, size_t* IU, size_t* JU, size_t n, double* UN, double* DINV);
+extern void sp_chol_num(size_t* IA, size_t* JA, double* AN, double* AD, size_t* IU, size_t* JU, 
+  size_t n, double* UN, double* DINV, size_t *xwork);
 
 /**
   Решение симметричной разреженной системы линейных уравнений \f$Ax=b\f$ методом
@@ -702,32 +687,15 @@ extern int sp_gauss_seidel(size_t* IA, size_t* JA, double* AN, double* AD, doubl
          - \f$x\f$ - найденное решение
   - Результат:
          - число итераций затраченных на поиск решения, если функция 
-		 успешна завершилась и \f$-1\f$ если произошла ошибка.
+		 успешна завершилась и \f$-1\f$ если произошла ошибка (диагональный элемент
+                 равен нулю).
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$n\f$ (на выходе будут записаны диагональные элементы
+           матрицы)
 
   Трудоемкость:
 */
-extern int sp_gauss_seidel_m(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double f, double eps, int max_iter, double* x);
-
-/*
-  Решение разреженной симметричной системы линейных уравнений \f$Ax=b\f$ методом сопряженных градиентов.
-
-  Вариант из библиотеки НИВЦ МГУ
-  - Вход:
-	- \f$IA\f$, \f$JA\f$, \f$AN\f$ - разреженное представление симметричной матрицы \f$A\f$ в RR(C)U-формате
-        - \f$b\f$ - вектор правых частей системы
-	- \f$n\f$ - порядок системы
-	- \f$eps\f$ - заданная точность, с которой необходимо вычислить решение системы
-	- \f$max\_iter\f$ - максимальное количество итераций  
-	- \f$x\f$ - начальное приближение решения
-  - Выход:
-	- \f$x\f$ - найденное решение
-	- \f$RSQ\f$ вычисленная сумма квадратов компонент вектора невязки \f$Ax - b\f$;
-  - Результат:
-	- число итераций затраченных на поиск решения
-
-  Трудоемкость:
-*/
-extern int sp_conj_nivc(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double eps, int max_iter, double* x, double* RSQ);
+extern int sp_gauss_seidel_m(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double f, double eps, int max_iter, double* x, double *work);
 
 /**
   Решение разреженной симметричной системы линейных уравнений \f$Ax=b\f$ 
@@ -744,10 +712,12 @@ extern int sp_conj_nivc(size_t* IA, size_t* JA, double* AN, double* b, size_t n,
         - \f$x\f$ - начальное приближение решения
   - Выход:
         - \f$x\f$ - найденное решение
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$3n\f$
 
   Трудоемкость:
 */
-extern int sp_conj(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double eps, int max_iter, double* x);
+extern int sp_conj(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double eps, int max_iter, double* x, double *work);
 
 /**
   Решение разреженной симметричной системы линейных уравнений \f$Ax=b\f$ 
@@ -764,31 +734,14 @@ extern int sp_conj(size_t* IA, size_t* JA, double* AN, double* b, size_t n, doub
         - \f$x\f$ - начальное приближение решения
   - Выход:
         - \f$x\f$ - найденное решение
+  - Рабочий массив:
+         - \f$work\f$ - массив длины \f$3n\f$
 
   Функция возвращает значение, на \f$1\f$ меньшее количества выполненных итераций.
   Если это значение равно \f$max\_iter\f$, то заданная точность не достигнута
 
   Трудоемкость:
 */
-extern int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_t n, double eps, int max_iter, double *x);
-
-/**
-  Решение разреженной системы линейных уравнений \f$Ax=b\f$ методом бисопряженных градиентов.
-  - Вход:
-        - \f$IA\f$, \f$JA\f$, \f$AN\f$ - разреженное представление матрицы \f$A\f$ в RR(C)U-формате
-        - \f$b\f$ - вектор правых частей системы
-        - \f$n\f$ - порядок системы
-        - \f$eps\f$ - заданная точность, с которой необходимо вычислить решение системы
-        - \f$max\_iter\f$ - максимальное количество итераций  
-        - \f$x\f$ - начальное приближение решения
-  - Выход:
-        - \f$x\f$ - найденное решение
-
-  Функция возвращает значение, на \f$1\f$ меньшее количества выполненных итераций.
-  Если это значение равно \f$max\_iter\f$, то заданная точность не достигнута
-
-  Трудоемкость:
-*/
-extern int sp_biconj(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double eps, int max_iter, double* x);
+extern int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_t n, double eps, int max_iter, double *x, double *work);
 
 #endif

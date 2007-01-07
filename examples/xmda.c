@@ -1,6 +1,3 @@
-#include <stdlib.h>
-#include <string.h> 
-
 #include "nl.h"
 
 /*
@@ -12,16 +9,21 @@ int main()
 {
 
   double *A, *SN, *SD, *BN, *BD, *UN, *UD, *DINV, *x, *b, *pb;  
-  size_t *I, *J, *IA, *JA, *IS, *JS, *IB, *JB, *D, *P, *IP, *M, *L, *IU, *JU;
+  size_t *I, *J, *IA, *JA, *IS, *JS, *IB, *JB, *D, *P, *IP, *M, *L, *IU, *JU, *xwork;
   size_t n, nz, k, unz;  
-
-  // Генерируем верхнетреугольную часть матрицы A
 
   n = 5;
   nz = n - 1;
+
   A = nl_dvector_create(nz);
   I = nl_xvector_create(nz);
   J = nl_xvector_create(nz);
+
+  xwork = nl_xvector_create(2*n);
+
+  /* Генерируем верхнетреугольную часть матрицы A
+     - стреловидный портрет */
+
   for (k = 0; k < nz; k++)
     A[k] = 1.;
   for (k = 0; k < nz; k++)
@@ -32,7 +34,7 @@ int main()
 
   sp_create_sym(n, nz, &IS, &JS, &SN, &SD);
   sp_convert(nz, A, I, J, n, IS, JS, SN);
-  //sp_order(IS, JS, SN, n); //Его здесь в общем случае нужно применять. Но он дает ошибку.
+  sp_order(IS, JS, SN, n);
 
   printf("Ненулевые элементы верхнетреугольной части матрицы A:\n");
   sp_print_list(IS, JS, SN, n, n, NULL, NULL);
@@ -72,8 +74,8 @@ int main()
   DINV = nl_dvector_create(n);
   sp_create_sym(n, unz, &IU, &JU, &UN, &UD);
   
-  sp_chol_symb(IB, JB, n, IU, JU, unz);
-  sp_chol_num(IB, JB, BN, BD, IU, JU, n, UN, DINV);
+  sp_chol_symb(IB, JB, n, IU, JU, unz, xwork);
+  sp_chol_num(IB, JB, BN, BD, IU, JU, n, UN, DINV, xwork);
 
   printf("\nВерхнетреугольная часть матрицы U:\n");
   sp_print_list(IU, JU, UN, n, n, NULL, NULL);
@@ -117,6 +119,7 @@ int main()
   nl_dvector_free(x);
   nl_dvector_free(b);
   nl_dvector_free(pb);
+  nl_xvector_free(xwork);
 
   return 0;
 

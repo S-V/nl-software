@@ -1,9 +1,6 @@
-#include <stdlib.h>
 #include <memory.h>
 #include <assert.h>
-#include "util.h"
-#include "qsort.h"
-#include "sparse.h"
+#include "nl.h"
 
 
 /*
@@ -53,75 +50,15 @@ void nl_xvector_qsort_x(size_t *v, size_t *x, size_t first, size_t last);
 
 
 #define SP_IS_ZERO(val, EPS) ((val > EPS || val < -EPS)? 0:1)
-#define SP_MIN(a, b)  (((a) < (b))? (a):(b))
-#define SP_MAX(a, b)  (((a) > (b))? (a):(b))
-
-
-int xvector_scan(size_t* v, size_t n)
-{
-  size_t i;
-  for(i = 0; i < n; i++)
-    if(scanf("%u", &v[i]) == 0)
-    {
-      nl_error(nl_err_IO, 0);
-      return 0;
-    }
-  return 1;
-}
-
-
-
-int dvector_scan(double* v, size_t n)
-{
-  size_t i;
-  for(i = 0; i < n; i++)
-    if(scanf("%lf", &v[i]) == 0)
-    {
-      nl_error(nl_err_IO, 0);
-      return 0;
-    }
-  return 1;
-}
-
-
-
-int xvector_fscan(FILE* file, size_t* v, size_t n)
-{
-  size_t i;
-  for(i = 0; i < n; i++)
-    if(fscanf(file, "%u", &v[i]) == 0)
-    {
-      nl_error(nl_err_IO, 0);
-      return 0;
-    }
-  return 1;
-}
-
-
-
-int dvector_fscan(FILE* file, double* v, size_t n)
-{
-  size_t i;
-  for(i = 0; i < n; i++)
-    if(fscanf(file, "%lf", &v[i]) == 0)
-    {
-      nl_error(nl_err_IO, 0);
-      return 0;
-    }
-  return 1;
-}
-
 
 
 void sp_create(size_t m, size_t nz, size_t **IA, size_t **JA, double **AN)
 {
   /* Выделяем память */
   *AN = nl_dvector_create(nz);
-  *IA = nl_xvector_create(m+1); /* Описание строк */
-  *JA = nl_xvector_create(nz); /* Массив индексов столбцов */
+  *IA = nl_xvector_create(m + 1);
+  *JA = nl_xvector_create(nz);
 }
-
-
 
 void sp_create_sym(size_t n, size_t nz, size_t **IA, size_t **JA, double **AN, double **AD)
 {
@@ -130,124 +67,131 @@ void sp_create_sym(size_t n, size_t nz, size_t **IA, size_t **JA, double **AN, d
   *AD = nl_dvector_create(n);
 }
 
-
-
-void sp_sparse(double** A, size_t m, size_t n, size_t** IA, size_t** JA, double** AN, double eps)
+void sp_sparse(double *A, size_t m, size_t n, size_t** IA, size_t** JA, double** AN, double eps)
 {
-  double  *p, *pAN;
+  double  *pAN;
   size_t  *pIA, *pJA;
-  size_t  nz = 0, nz_ = 0;
-  size_t  x,y;
-  /* считаем число ненулевых элементов */
-  for(y = 0; y<m; y++)
-  {
-    p = A[y];
-    for(x = 0; x<n; x++, p++)
-      if(!SP_IS_ZERO(*p, eps))
-        nz++;
-  }
-  /* выделяем память */
-  sp_create(m, nz, IA, JA, AN);
+  size_t  nzr;
+  size_t  i, j, k;
 
   /* заполнение массивов */
   pIA  = *IA;
   *pIA = 0;
   pJA  = *JA;
   pAN  = *AN;
-  for(y = 0; y<m; y++)
+  k = 0;
+  nzr = 0;
+  for(i = 0; i < m; i++)
   {
-    p = A[y];
-    for(x = 0; x<n; x++, p++)
-      if(!SP_IS_ZERO(*p, eps))
+    for(j = 0; j < n; j++)
+    {
+      if(!SP_IS_ZERO(A[k++], eps))
       {
-        *pAN++  = *p;
-        *pJA++  = x;
-        nz_++;
+        *pAN++ = A[k];
+        *pJA++ = j;
+        nzr++;
       }
-    *(++pIA) = nz_;
+    }
+    *(++pIA) = nzr;
   }
-  assert(nz == nz_);
 }
 
 
 
-void sp_sparse_sym(double** A, size_t n, size_t** IA, size_t** JA, double** AN, double** AD, double eps)
+void sp_sparse_sym(double* A, size_t n, size_t** IA, size_t** JA, double** AN, double** AD, double eps)
 {
-  double  *p, *pAN, *pAD;
-  size_t  *pIA,*pJA;
-  size_t  nz = 0, nz_ = 0;
-  size_t  x,y;
-  /* считаем число ненулевых элементов */
-  for(y = 0; y < n; y++)
-  {
-    p = A[y] + y + 1;
-    for(x = y+1; x<n; x++, p++)
-      if(!SP_IS_ZERO(*p, eps))
-        nz++;
-  }
-  /* выделяем память */
-  sp_create_sym(n, nz, IA, JA, AN, AD);
+  double  *pAN, *pAD;
+  size_t  *pIA, *pJA;
+  size_t  nz, nzr;
+  size_t  i, j, k;
 
   /* заполнение массивов */
+
   pIA  = *IA;
   *pIA = 0;
   pJA  = *JA;
   pAN  = *AN;
   pAD  = *AD;
-  for(y = 0; y < n; y++)
+  k = 0;
+  nzr = 0;
+
+  for(i = 0; i < n; i++)
   {
-    p  = A[y] + y;
-    *pAD++ = *p++;
-    for(x = y+1; x<n; x++, p++)
-      if(!SP_IS_ZERO(*p, eps))
+    k += i;
+    *pAD = A[k++];
+
+    for(j = i + 1; j < n; j++)
+    {
+      if(!SP_IS_ZERO(A[k++], eps))
       {
-        *pAN++  = *p;
-        *pJA++  = x;
-        nz_++;
+        *pAN++ = A[k];
+        *pJA++ = j;
+        nzr++;
       }
-    *(++pIA) = nz_;
-  }
-  assert(nz == nz_);
-}
-
-
-
-void sp_full(size_t* IA, size_t* JA, double* AN, size_t m, size_t n, double** A)
-{
-  size_t i,j;
-  double  *pA;
-  for(j = 0; j < m; j++)
-  {
-    pA  = A[j];
-    /* зануляем все элементы в строке */
-    for(i=0; i<n; i++)
-      *pA++ = 0.;
-    pA  = A[j];
-    /* заполняем все ненулевые элементы */
-    for(i = *IA++; i < *IA; i++)
-      pA[*JA++] = *AN++;
+    }
+    *(++pIA) = nzr;
   }
 }
 
 
 
-void sp_full_sym(size_t* IA, size_t* JA, double* AN, double* AD, size_t n, double** A)
+void sp_full(size_t* IA, size_t* JA, double* AN, size_t m, size_t n, double* A)
 {
-  size_t i,j;
-  double  *pA;
+  size_t i, j, k;
 
-  for(j = 0; j < n; j++)
+  /* зануляем все элементы в A */
+
+  for (k = 0; k < m*n; k++)
+      A[k] = 0;
+
+  /* заполняем все ненулевые элементы */
+
+  k = 0;
+  for (i = 0; i < m; i++)
   {
-    pA  = A[j] + j+1;
-    /* зануляем все элементы в строке */
-    for(i = j+1; i < n; i++)
-      A[i][j] = *pA++ = 0.;
-    A[j][j] = *AD++;
-    pA  = A[j];
-    /* заполняем все ненулевые элементы */
-    for(i = *IA++; i < *IA; i++,JA++)
-      A[*JA][j] = pA[*JA] = *AN++;
+
+    for(j = IA[i]; j < IA[i + 1]; j++)
+    {
+      A[k + JA[j]] = AN[j];
+    }
+
+    k += n;
   }
+}
+
+
+
+void sp_full_sym(size_t* IA, size_t* JA, double* AN, double* AD, size_t n, double* A)
+{
+  size_t i, j, k;
+
+  /* зануляем все элементы в A */
+
+  for (k = 0; k < n*n; k++)
+      A[k] = 0;
+
+  /* заполняем все ненулевые элементы 
+     на диагонали и над ней */
+
+  k = 0;
+  for (i = 0; i < n; i++)
+  {
+    A[k + i] = AD[i];
+
+    for(j = IA[i]; j < IA[i + 1]; j++)
+    {
+      A[k + JA[j]] = AN[j];
+    }
+
+    k += n;
+  }
+
+  /* заполняем все ненулевые элементы 
+     под диагональю */
+
+  for (i = 0; i < n; i++)
+    for (j = 0; j < i; j++)
+      A[i*n + j] = A[j*n + i];
 }
 
 
@@ -274,12 +218,65 @@ size_t sp_nz(size_t m, size_t* IA)
   return IA[m];
 }
 
+size_t sp_nz_full(double *A, size_t m, size_t n, double eps)
+{
+  size_t nz, k;
+
+  nz = 0;
+  for(k = 0; k < m*n; k++)
+  {
+     if(!SP_IS_ZERO(A[k], eps))
+        nz++;
+  }
+
+  return nz;
+}
+
+size_t sp_nz_up(double *A, size_t n, double eps)
+{
+  size_t i, j, k, nz;
+  
+  nz = 0;
+  k = 0;
+  for (i = 0; i < n; i++)
+  {
+    k += i + 1;
+    for (j = i + 1; j < n; j++)
+    {
+      if(!SP_IS_ZERO(A[k++], eps))
+        nz++;
+    }
+  }
+
+  return nz;
+}
+
+extern size_t sp_nz_low(double *A, size_t n, double eps)
+{
+  size_t i, j, k, nz;
+  
+  nz = 0;
+  k = 0;
+
+  for (i = 0; i < n; i++)
+  {
+    for (j = 0; j < i; j++)
+    {
+      if(!SP_IS_ZERO(A[k++], eps))
+        nz++;
+    }
+    k += n - i;
+  }
+
+  return nz;
+}
+
 
 void sp_print(size_t* IA, size_t* JA, double* AN, size_t m, size_t n, const char* format)
 {
   size_t nz = IA[m];
   printf("%u %u\n", m, n);
-  nl_xvector_print(IA, m+1, format);
+  nl_xvector_print(IA, m + 1, format);
   nl_xvector_print(JA, nz, format);
   nl_dvector_print(AN, nz, format);
 }
@@ -339,63 +336,6 @@ void sp_fprint_list(FILE* file, size_t* IA, size_t* JA, double* AN, size_t m, si
       fprintf(file, "\n");
     }
   }
-}
-
-
-
-int sp_scan(size_t** IA, size_t** JA, double** AN, size_t* m, size_t* n)
-{
-  size_t nz;
-  if(scanf("%u %u", m, n) != 2)
-  {
-    nl_error(nl_err_IO, 0);
-    return 0;
-  }
-
-  *IA = nl_xvector_create(*m+1);
-
-  /* чтение массива IA -- описание строк */
-  if(!xvector_scan(*IA, *m+1))
-    return 0;
-  nz = (*IA)[*m];
-
-  *AN = nl_dvector_create(nz);
-  *JA = nl_xvector_create(nz);
-  /* чтение массива JA и AN -- массив идексов и массив ненулевых элементов */
-  if(!xvector_scan(*JA, nz))
-    return 0;
-  if(!dvector_scan(*AN, nz))
-    return 0;
-  return 1;
-}
-
-
-
-int sp_fscan(FILE* file, size_t** IA, size_t** JA, double** AN, size_t* m, size_t* n)
-{
-  size_t nz;
-  if(fscanf(file, "%u %u", m, n) != 2)
-  {
-    nl_error(nl_err_IO, 0);
-    return 0;
-  }
-
-  *IA = nl_xvector_create(*m+1);  /* описание строк */
-
-  /* чтение массива IA -- описание строк */
-  if(!xvector_fscan(file, *IA, *m+1))
-    return 0;
-  nz = (*IA)[*m];
-
-  *AN = nl_dvector_create(nz);
-  *JA = nl_xvector_create(nz);
-
-  /* чтение массива JA и AN -- массив идексов и массив ненулевых элементов */
-  if(!xvector_fscan(file, *JA, nz))
-    return 0;
-  if(!dvector_fscan(file, *AN, nz))
-    return 0;
-  return 1;
 }
 
 
@@ -472,66 +412,6 @@ void sp_fprint_list_sym(FILE* file, size_t* IA, size_t* JA, double* AN, double* 
       fprintf(file, "\n");
     }
   }
-}
-
-
-
-int sp_scan_sym(size_t** IA, size_t** JA, double** AN, double** AD, size_t* n)
-{
-  size_t nz;
-  if(scanf("%u", n) != 1)
-  {
-    nl_error(nl_err_IO, 0);
-    return 0;
-  }
-
-  /* чтение массива IA -- описание строк */
-  if(!xvector_scan(*IA, *n+1))
-    return 0;
-  nz = (*IA)[*n];
-
-  *AN = nl_dvector_create(nz);
-  *JA = nl_xvector_create(nz);
-  *AD = nl_dvector_create(*n);
-
-  /* чтение массива JA и AN -- массив идексов и массив ненулевых элементов */
-  if(!xvector_scan(*JA, nz))
-    return 0;
-  if(!dvector_scan(*AN, nz))
-    return 0;
-  if(!dvector_scan(*AD, *n))
-    return 0;
-  return 1;
-}
-
-
-
-int sp_fscan_sym(FILE* file, size_t** IA, size_t** JA, double** AN, double** AD, size_t* n)
-{
-  size_t nz;
-  if(fscanf(file, "%u", n) != 1)
-  {
-    nl_error(nl_err_IO, 0);
-    return 0;
-  }
-
-  /* чтение массива IA -- описание строк */
-  if(!xvector_fscan(file, *IA, *n+1))
-    return 0;
-  nz = (*IA)[*n];
-
-  *AN = nl_dvector_create(nz);
-  *JA = nl_xvector_create(nz);
-  *AD = nl_dvector_create(*n);
-
-  /* чтение массива JA и AN -- массив идексов и массив ненулевых элементов */
-  if(!xvector_fscan(file, *JA, nz))
-    return 0;
-  if(!dvector_fscan(file, *AN, nz))
-    return 0;
-  if(!dvector_fscan(file, *AD, *n))
-    return 0;
-  return 1;
 }
 
 
@@ -630,13 +510,13 @@ void sp_transpose(size_t* IA, size_t* JA, double* AN, size_t m, size_t n, size_t
 void sp_order(size_t* IA, size_t* JA, double* AN, size_t m)
 {
   size_t i;
+
   for(i = 0; i < m; i++)
   {
-    nl_xvector_qsort_d(JA, AN, IA[i], IA[i+1]-1);
+    if (IA[i + 1] > IA[i])
+      nl_xvector_qsort_d(JA, AN, IA[i], IA[i + 1] - 1);
   }
 }
-
-
 
 
 void sp_order_m(size_t* IA, size_t* JA, size_t m)
@@ -646,23 +526,32 @@ void sp_order_m(size_t* IA, size_t* JA, size_t m)
   {
     z = *IA++;
     if(z < *IA)
-      nl_xvector_qsort(JA, z, *IA-1);
+      nl_xvector_qsort(JA, z, *IA - 1);
   }
 }
 
 
 
-int sp_add_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t n, size_t* IC, size_t* JC, size_t size_C)
+int sp_add_symb(
+  size_t *IA, 
+  size_t *JA, 
+  size_t *IB, 
+  size_t *JB, 
+  size_t m, 
+  size_t n, 
+  size_t *IC, 
+  size_t *JC, 
+  size_t size_C,
+  size_t *xwork)
 {
-  size_t i,j, nzC = 0, z, q;
-  size_t*  x = nl_xvector_create(n);
+  size_t i, j, nzC = 0, z, q;
   size_t*  pIA = IA;
   size_t*  pJA = JA;
   size_t*  pIB = IB;
   size_t*  pJB = JB;
   size_t*  pIC = IC;
   size_t*  pJC = JC;
-  memset(x, -1, sizeof(*x)*n);
+  memset(xwork, -1, sizeof(*xwork)*n);
 
   *pIC++ = 0;
   for(i = 0; i < m; i++)
@@ -672,12 +561,10 @@ int sp_add_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t
     {
       if(++nzC > size_C)
       {
-        nl_error(nl_err_inconsistent_size, 0);
-        nl_xvector_free(x);
         return 0;
       }
       q  = *pJA++;
-      x[q]  = i;
+      xwork[q]  = i;
       *pJC++  = q;
     }
 
@@ -685,12 +572,10 @@ int sp_add_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t
     for(j = z; j < *pIB; j++)
     {
       q  = *pJB++;
-      if(x[q] != i)
+      if(xwork[q] != i)
       {
         if(++nzC > size_C)
         {
-          nl_error(nl_err_inconsistent_size, 0);
-          nl_xvector_free(x);
           return 0;
         }
         *pJC++ = q;
@@ -699,16 +584,26 @@ int sp_add_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t
     assert(nzC == (size_t)(pJC - JC));
     *pIC++ = pJC - JC;
   }
-  nl_xvector_free(x);
   return 1;
 }
 
 
 
-void sp_add_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, double* BN, size_t m, size_t n, size_t* IC, size_t* JC, double* CN)
+void sp_add_num(
+  size_t* IA, 
+  size_t* JA, 
+  double* AN,
+  size_t* IB, 
+  size_t* JB, 
+  double* BN, 
+  size_t m, 
+  size_t n,
+  size_t* IC, 
+  size_t* JC, 
+  double* CN,
+  double *work)
 {
-  size_t i,j;
-  double*  x = nl_dvector_create(n);
+  size_t i, j;
   size_t*  pJC, *pJC_;
   size_t*  pIA = IA;
   size_t*  pJA = JA;
@@ -725,25 +620,24 @@ void sp_add_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, doub
   {
     zC  = *pIC++;
     for(j = zC; j < *pIC; j++)
-      x[*pJC++] = 0.;
+      work[*pJC++] = 0.;
 
     z  = *pIA++;
     for(j = z; j < *pIA; j++)
-      x[*pJA++] = *pAN++;
+      work[*pJA++] = *pAN++;
 
     z  = *pIB++;
     for(j = z; j < *pIB; j++)
-      x[*pJB++] += *pBN++;
+      work[*pJB++] += *pBN++;
 
     for(j = zC; j < *pIC; j++)
-      *pCN++ = x[*pJC_++];
+      *pCN++ = work[*pJC_++];
   }
-  nl_dvector_free(x);
 }
 
 void sp_mult_col(size_t* IA, size_t* JA, double* AN, double* b, size_t m, double* c)
 {
-  size_t i,j;
+  size_t i, j;
   double sum;
   for(i = 0; i < m; i++)
   {
@@ -800,9 +694,18 @@ void sp_mult_col_sym(size_t* IA, size_t* JA, double* AN, double* AD, double* b, 
 
 
 
-int sp_mult_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_t k, size_t* IC, size_t* JC, size_t size_C)
+int sp_mult_symb(
+  size_t* IA, 
+  size_t* JA, 
+  size_t* IB, 
+  size_t* JB, 
+  size_t m, 
+  size_t k, 
+  size_t* IC, 
+  size_t* JC, 
+  size_t size_C,
+  size_t *xwork)
 {
-  size_t*  IX;
   size_t*  pIC = IC;
   size_t  nzC = 0;
   size_t  i,j,l,z,s;
@@ -810,8 +713,7 @@ int sp_mult_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_
   size_t*  pJA = JA;
   size_t*  pJC = JC;
 
-  IX = nl_xvector_create(k);
-  memset(IX, -1, sizeof(size_t)*k);
+  memset(xwork, -1, sizeof(size_t)*k);
 
   *pIC++ = 0;
   for(i = 0; i < m; i++)
@@ -822,29 +724,27 @@ int sp_mult_symb(size_t* IA, size_t* JA, size_t* IB, size_t* JB, size_t m, size_
       for(l = IB[*pJA]; l < IB[*pJA + 1]; l++)
       {
         s = JB[l];
-        if(IX[s] != i)
+        if(xwork[s] != i)
         {
           if(++nzC > size_C)
           {
-            nl_error(nl_err_inconsistent_size, 0);
-            nl_xvector_free(IX);
+            /*nl_error(nl_err_inconsistent_size, 0);*/
             return 0;
           }
           *pJC++ = s;
-          IX[s] = i;
+          xwork[s] = i;
         }
       }
       pJA++;
     }
     *pIC++ = nzC;
   }
-  nl_xvector_free(IX);
   return 1;
 }
 
 
 
-void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, double* BN, size_t* IC, size_t* JC, size_t m, size_t k, double* CN)
+void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, double* BN, size_t* IC, size_t* JC, size_t m, size_t k, double* CN, double *work)
 {
   size_t  i,j,l,zC;
   size_t  *pJC1;
@@ -855,7 +755,6 @@ void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, dou
   size_t  *pJB, *pJB_end;
   double  *pBN;
 
-  double*  X = nl_dvector_create(k);
   double  d;
 
   for(i = 0; i < m; i++)
@@ -865,7 +764,7 @@ void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, dou
     {
       pJA_end = JC + *pIC;
       while(pJC < pJA_end)
-        X[*pJC++] = 0.0;
+        work[*pJC++] = 0.0;
 
       j  = IA[i];
       pJA  = JA + j;
@@ -880,16 +779,15 @@ void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, dou
         pJB_end = JB + IB[*pJA+1];
         while(pJB < pJB_end)
         {
-          X[*pJB++] += d*(*pBN++);
+          work[*pJB++] += d*(*pBN++);
         }
         pJA++;
       }
 
       for(j = zC; j < *pIC; j++)
-        CN[j] = X[*pJC1++];
+        CN[j] = work[*pJC1++];
     }
   }
-  nl_dvector_free(X);
 }
 
 void sp_permute_sym(
@@ -913,7 +811,7 @@ void sp_permute_sym(
 		while(j < IA[i + 1])
 		{
 			k = JA[j];
-			IB[SP_MIN(IP[i], IP[k]) + 1]++;
+			IB[NL_MIN(IP[i], IP[k]) + 1]++;
 			j++;
 		}
 	}
@@ -926,8 +824,8 @@ void sp_permute_sym(
 		while(j < IA[i + 1])
 		{
 			k = JA[j];
-			imin = SP_MIN(IP[i], IP[k]);
-			imax = SP_MAX(IP[i], IP[k]);
+			imin = NL_MIN(IP[i], IP[k]);
+			imax = NL_MAX(IP[i], IP[k]);
 			JB[IB[imin]] = imax;
 			BN[IB[imin]] = AN[j];
 			IB[imin]++;
@@ -991,15 +889,16 @@ int sp_gauss_seidel(size_t* IA, size_t* JA, double* AN, double* AD, double* b, s
 
 
 
-int sp_gauss_seidel_m(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double f, double eps, int max_iter, double* x)
+int sp_gauss_seidel_m(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double f, double eps, int max_iter, double* x,
+  double *work)
 {
   size_t  i,j;
   int    iter;
   double  norm_b  = 0;
   double  *px    = x;
   double  *pb    = b;
-  double  *AD;
-  double  *pAD  = AD = nl_dvector_create(n);
+  double  *AD = work;
+  double  *pAD  = AD;
   size_t  *pIA  = IA;
   size_t  *pJA;
   double  *pAN;
@@ -1017,7 +916,7 @@ int sp_gauss_seidel_m(size_t* IA, size_t* JA, double* AN, double* b, size_t n, d
         goto label;
       }
     }
-    nl_error(nl_err_diag_elem_must_be_non_zero, 0);
+    /*nl_error(nl_err_diag_elem_must_be_non_zero, 0);*/
     return -1;
 label:;
   }
@@ -1053,168 +952,28 @@ label:;
       *px++ += f*u;
     }
     iter++;
-  } while(iter < max_iter && e >= eps);
-  nl_dvector_free(AD);
+  } 
+  while(iter < max_iter && e >= eps);
+
   return iter;
 }
 
 
 
-int sp_conj_nivc(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double eps, int max_iter, double* x, double* RSQ)
-{
-  double eps_;
-
-  int  IRST = 0;
-
-  double  *xi = nl_dvector_create(n);
-  double  *g  = nl_dvector_create(n);
-  double  *h  = nl_dvector_create(n);
-  double  *xj = nl_dvector_create(n);
-  double  *pxi, *pg, *ph, *pxj, *pb, *px;
-  double  *p_end;
-  double  RP, BSQ, anum, aden;
-  int    i = 0;
-
-label_start:
-  IRST++;
-  /* вычисление начального градиента   
-     xi = A*x */
-  sp_mult_col(IA, JA, AN, x, n, xi);
-  BSQ  = RP = 0.;
-
-  /* Вычисление величин, характеризующих величину вектора правых частей
-     xi  = A*x - b
-     BSQ = ||b||^2
-     RP  = ||xi||^2 */
-  pb  = b;
-  pxi  = xi;
-  p_end = xi + n;
-  while(pxi < p_end)
-  {
-    BSQ   += *pb * *pb;
-    *pxi -= *pb++;
-    RP   += *pxi * *pxi;
-    pxi++;
-  }
-  eps_ = BSQ * eps*eps;
-
-  /* g = xi*A' */
-  sp_mult_row(IA, JA, AN, xi, n, n, g);
-
-  /* g := -g 
-     h = g == -A'*xi */
-  ph = h;
-  pg = g-1;
-  p_end = g + n;
-  while(++pg < p_end)
-  {
-    *ph++ = *pg = -*pg;
-  }
 
 
-  /* основной цикл метода сопряженных градиентов */
-  for(; i < max_iter; i++)
-  {
-    /* xi = A*h */
-    sp_mult_col(IA, JA, AN, h, n, xi);
-
-    /* anum = (g, h)   
-       aden = (xi, xi) = ||xi||^2 */
-    aden = anum = 0.;
-    pg = g; ph = h; pxi = xi-1; p_end = xi + n;
-    while(++pxi < p_end)
-    {
-      anum += *pg++ * *ph++;
-      aden += *pxi * *pxi;
-    }
-
-    /* система алгебраически вырождена */
-    if(aden == 0.)
-    {
-      nl_error(nl_err_matrix_is_singular, 0);
-      i = -1;
-      break;
-    }
-    anum /= aden;
-
-    /* xi = x; */
-    /* x = x + anum*h */
-    px  = x; pxi = xi; ph = h; p_end = xi + n;
-    while(pxi < p_end)
-    {
-      *pxi++  = *px;
-      *px++  += anum * *ph++;
-    }
-
-    /* xj = A*x - b */
-    /* RSQ = (xj,xj) */
-    sp_mult_col(IA, JA, AN, x, n, xj);
-    *RSQ = 0;
-    pxj = xj; pb = b; p_end = b + n;
-    while(pb < p_end)
-    {
-      *pxj -= *pb++;
-      *RSQ += *pxj * *pxj;
-      pxj++;
-    }
-
-    /* Выход, если заданная точность достигнута */
-    if(*RSQ == RP || *RSQ <= eps_)
-      break;
-
-    if(*RSQ > RP)
-    {
-                   nl_dvector_copy(x, xi, n);
-      if(IRST >= 3)
-        break;
-      goto label_start;
-    }
-    RP = *RSQ;
-
-    /* вычисление градиента для следующей итерации */
-    /* xi = xj*A' */
-    sp_mult_row(IA, JA, AN, xj, n, n, xi);
-    /* anum = (g, g) */
-    /* aden = (xi + g, xi) */
-    anum = 0.; aden = 0.;
-    pg = g; pxi = xi-1; p_end = xi + n;
-    while(++pxi < p_end)
-    {
-      aden += *pg * *pg;
-      anum += (*pxi + *pg++)* (*pxi);
-    }
-
-    if(aden == 0.0)
-      break;
-
-    anum /= aden;
-    /* g = -xi */
-    /* h = -xi + anum*h */
-    pg = g; pxi = xi; ph = h-1; p_end = h + n;
-    while(++ph < p_end)
-    {
-      *pg = -*pxi++;
-      *ph = *pg++ + anum* *ph;
-    }
-  }
-
-  nl_dvector_free(xj);
-  nl_dvector_free(h);
-  nl_dvector_free(g);
-  nl_dvector_free(xi);
-  return i;
-}
-
-
-
-int sp_conj(size_t *IA, size_t *JA, double *AN, double *b, size_t n, double eps, int max_iter, double *x)
+int sp_conj(size_t *IA, size_t *JA, double *AN, double *b, size_t n, double eps, int max_iter, double *x, double *work)
 {
   double  *pr, *p_end, *pb, *pp, *pq, *px;
   double  rho, alpha, beta, rho2, eps_ = 0.;
-  double  *r = nl_dvector_create(n);
-  double  *p = nl_dvector_create(n);
-  double  *q = nl_dvector_create(n);
+  double  *r;
+  double  *p;
+  double  *q;
   int    itr = 0;
+
+  r = work;
+  p = work + n;
+  q = work + 2*n;
 
   /* r = A*x */
   sp_mult_col(IA, JA, AN, x, n, r);
@@ -1234,7 +993,7 @@ int sp_conj(size_t *IA, size_t *JA, double *AN, double *b, size_t n, double eps,
   while(itr < max_iter)
   {
     /* rho = ||r||2 */
-    rho = nl_dvector_dot(r, r, n);
+    rho = cblas_ddot(n, r, 1, r, 1);
     if(rho <= eps_)
     {
       break;
@@ -1251,15 +1010,16 @@ int sp_conj(size_t *IA, size_t *JA, double *AN, double *b, size_t n, double eps,
         *pp  = *pr++ + beta * (*pp);
         pp++;
       }
-    } else
+    } 
+    else
     {
-      nl_dvector_copy(p, r, n);
+      cblas_dcopy(n, r, 1, p, 1);
     }
 
     /* q = A*p */
     sp_mult_col(IA, JA, AN, p, n, q);
 
-    alpha  = rho / nl_dvector_dot(p, q, n);
+    alpha  = rho / cblas_ddot(n, p, 1, q, 1);
 
     /* x += alpha * p */
     /* r -= alpha * q; */
@@ -1277,22 +1037,23 @@ int sp_conj(size_t *IA, size_t *JA, double *AN, double *b, size_t n, double eps,
     itr++;
     }
 
-  nl_dvector_free(r);
-  nl_dvector_free(q);
-  nl_dvector_free(p);
   return itr;
 }
 
 
 
-int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_t n, double eps, int max_iter, double *x)
+int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_t n, double eps, int max_iter, double *x, double *work)
 {
   double  *pr,*p_end,*pb,*pp,*pq,*px;
   double  rho, alpha, beta, rho2, eps_ = 0.;
-  double  *r = nl_dvector_create(n);
-  double  *p = nl_dvector_create(n);
-  double  *q = nl_dvector_create(n);
+  double  *r;
+  double  *p;
+  double  *q;
   int    itr = 0;
+
+  r = work;
+  p = work + n;
+  q = work + 2*n;
 
   /* r = A*x */
   sp_mult_col_sym(IA, JA, AN, AD, x, n, r);
@@ -1312,7 +1073,7 @@ int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_
   while(itr < max_iter)
   {
     /* rho = ||r||2 */
-    rho = nl_dvector_dot(r, r, n);
+    rho = cblas_ddot(n, r, 1, r, 1);
     if(rho <= eps_)
     {
       break;
@@ -1331,13 +1092,13 @@ int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_
       }
     } else
     {
-      nl_dvector_copy(p, r, n);
+      cblas_dcopy(n, r, 1, p, 1);
     }
 
     /* q = A*p */
     sp_mult_col_sym(IA, JA, AN, AD, p, n, q);
 
-    alpha  = rho / nl_dvector_dot(p, q, n);
+    alpha  = rho / cblas_ddot(n, p, 1, q, 1);
 
     /* x += alpha * p */
     /* r -= alpha * q; */
@@ -1355,16 +1116,13 @@ int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_
     itr++;
     }
 
-  nl_dvector_free(r);
-  nl_dvector_free(q);
-  nl_dvector_free(p);
   return itr;
 }
 
 
-int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_t size_U)
+int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_t size_U, size_t *xwork)
 {
-  size_t  *IP = nl_xvector_create(n);
+  size_t  *IP = xwork;
   size_t  i,j;
   size_t  *pIA = IA;
   size_t  *pJA = JA;
@@ -1388,7 +1146,7 @@ int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_
     {
       if(++nz > size_U)
       {
-        nl_error(nl_err_inconsistent_size, 0);
+        /*nl_error(nl_err_inconsistent_size, 0);*/
         return 0;
       }
       t = *pJU++ = *pJA++;
@@ -1417,7 +1175,7 @@ int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_
           {
             if(++nz > size_U)
             {
-              nl_error(nl_err_inconsistent_size, 0);
+              /*nl_error(nl_err_inconsistent_size, 0);*/
               return 0;
             }
             *pJU++  = t;
@@ -1443,17 +1201,17 @@ int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_
     }
     IU[i] = nz_;
   }
-  IU[n] = IU[n-1] = nz;
+  IU[n] = IU[n - 1] = nz;
 
-  nl_xvector_free(IP);
   return 1;
 }
 
 
-void sp_chol_num(size_t* IA, size_t* JA, double* AN, double* AD, size_t* IU, size_t* JU, size_t n, double* UN, double* DINV)
+void sp_chol_num(size_t* IA, size_t* JA, double* AN, double* AD, size_t* IU, size_t* JU, size_t n, 
+double* UN, double* DINV, size_t *xwork)
 {
-  size_t  *IP   = nl_xvector_create(n);
-  size_t  *IUP = nl_xvector_create(n);
+  size_t  *IP  = xwork;
+  size_t  *IUP = xwork + n;
   size_t  i,j;
   size_t  *pIU = IU;
   size_t  *pJU;
@@ -1550,8 +1308,6 @@ void sp_chol_num(size_t* IA, size_t* JA, double* AN, double* AD, size_t* IU, siz
 
   }
 
-  nl_xvector_free(IUP);
-  nl_xvector_free(IP);
 }
 
 
@@ -1583,7 +1339,7 @@ void sp_chol_solve(size_t* IU, size_t* JU, double* UN, double* DINV, double* b, 
   }
   *px *= *pDINV;
 
-  /* цикл вычисления компонентов вектора решения X (обратная подстановка) */
+  /* цикл вычисления компонент вектора решения X (обратная подстановка) */
   pJU  = JU + IU[n-1]-1;
   pUN = UN + IU[n-1]-1;
   px  = x  + n-2;
@@ -1618,11 +1374,11 @@ void sp_row_nz_sym(size_t* IA, size_t* JA, size_t n, size_t* nz)
 }
 
 
-void sp_colperm_sym(size_t* IA, size_t* JA, size_t n, size_t* p)
+void sp_colperm_sym(size_t* IA, size_t* JA, size_t n, size_t* p, size_t *xwork)
 {
   size_t i;
-  size_t* ps;
-  size_t* s = ps = nl_xvector_create(n);
+  size_t* ps = xwork;
+  size_t* s = ps;
   sp_row_nz_sym(IA, JA, n, p);
 
   for(i = 0; i < n; i++)
@@ -1632,108 +1388,7 @@ void sp_colperm_sym(size_t* IA, size_t* JA, size_t n, size_t* p)
 
   for(i = 0; i < n; i++)
     p[*ps++] = i;
-
-  nl_xvector_free(s);
 }
-
-
-
-int sp_biconj(size_t *IA, size_t *JA, double *AN, double *b, size_t n, double eps, int max_iter, double *x)
-{
-  double  *pr, *p_end, *pb, *pp, *pq, *px, *pp_, *pr_, *pq_;
-  double  rho, alpha, beta, rho2, eps_ = 0.;
-  double  *r = nl_dvector_create(n);
-  double  *r_= nl_dvector_create(n);
-  double  *p = nl_dvector_create(n);
-  double  *p_= nl_dvector_create(n);
-  double  *q = nl_dvector_create(n);
-  double  *q_ = nl_dvector_create(n);
-  int itr = 0;
-
-  /* r = A*x */
-  sp_mult_col(IA, JA, AN, x, n, r);
-  /* q_ = q = r_ = r = b - A*x */
-  p_end = r + n;
-  pb  = b;
-  pr  = r;
-  pr_ = r_;
-  pq  = q;
-  pq_ = q_;
-  while(pr < p_end)
-  {
-    eps_+= *pb * *pb;
-    *pq_++ = *pq++ = *pr_++ = *pr++ = *pb++ - *pr;
-  }
-  eps_ *= eps * eps;
-
-  /* главный цикл */
-  while(itr < max_iter)
-  {
-    /* rho = (r, r_)2 */
-    rho = nl_dvector_dot(r_, r, n);
-    if(rho <= eps_ && itr > 1)
-    {
-      break;
-    }
-    if(itr)
-    {
-      beta = rho/rho2;
-      /* p = r + beta * p; */
-      /* p_= r_+ beta * p_ */
-      pp     = p;
-      p_end  = p + n;
-      pr     = r;
-      pr_    = r_;
-      pp_    = p_;
-      while(pp < p_end)
-      {
-        *pp  = *pr++  + beta * (*pp);
-        *pp_ = *pr_++ + beta * (*pp_);
-        pp++; pp_++;
-      }
-    } 
-    {
-      nl_dvector_copy(p, r, n);
-      nl_dvector_copy(p_, r_, n);
-    }
-
-    /* q = A*p */
-    sp_mult_col(IA, JA, AN, p, n, q);
-    /* q_ = A'*p_ */
-    sp_mult_row(IA, JA, AN, p_, n, n, q_);
-
-    alpha  = rho / nl_dvector_dot(p_, q, n);
-
-    /* x += alpha * p */
-    /* r -= alpha * q; */
-    /* r_-= alpha * q_; */
-    pq = q;
-    px = x;
-    pr = r;
-    pp = p;
-    p_end = x + n;
-    pr_ = r_;
-    pq_= q_;
-    while(px < p_end)
-    {
-      *px++ += alpha * *pp++;
-      *pr++ -= alpha * *pq++;
-      *pr_++ -= alpha * *pq_++;
-    }
-    rho2 = rho;
-    itr++;
-  }
-
-  nl_dvector_free(q_);
-  nl_dvector_free(q);
-  nl_dvector_free(p_);
-  nl_dvector_free(p);
-  nl_dvector_free(r_);
-  nl_dvector_free(r);
-  return itr;
-}
-
-
 
 void sp_sym_to_complete(size_t *IS, size_t *JS, double* SN, double* SD, size_t n, size_t *IA, size_t *JA, double *AN)
 {
@@ -1795,13 +1450,6 @@ void sp_sym_to_complete(size_t *IS, size_t *JS, double* SN, double* SD, size_t n
 
 // Быстрая сортировка
 
-
-
-
-
-#define MIN(a,b) (a < b)? a:b
-#define MAX(a,b) (a > b)? a:b
-
 #define MAX_THRESH 16 /* число подбирается опытном путем. 
   может улучшить сортировку в разы. на Duron 750 было получено 1024*/
 
@@ -1840,26 +1488,32 @@ void nl_xvector_qsort_d(size_t *v, double *x, size_t first, size_t last)
     stack_node stack[STACK_SIZE];
     stack_node *top = stack + 1;
     
+printf("I'm here!\n");
+
     while (STACK_NOT_EMPTY) 
     {
       size_t *left_ptr;
       size_t *right_ptr;
 
       size_t mid = (hi + lo) / 2;
+printf("11\n");
       pivot_buffer = v[mid];
       
       if(pivot_buffer < v[lo])
       {
+printf("12\n");
         SWAP_DOUBLE(mid, lo);
         pivot_buffer = v[lo];
       }
       if(v[hi] < pivot_buffer) 
       {
+printf("13\n");
         SWAP_DOUBLE(hi, mid);
         pivot_buffer = v[hi];
 
         if(pivot_buffer < v[lo])
         {
+printf("14\n");
           SWAP_DOUBLE(mid, lo);
         }
       } 
@@ -1867,18 +1521,23 @@ void nl_xvector_qsort_d(size_t *v, double *x, size_t first, size_t last)
       left_ptr  = v + lo + 1;
       right_ptr = v + hi - 1;
     
+printf("15\n");
       do 
       {
+printf("16\n");
         while(*left_ptr < pivot_buffer)
           left_ptr++;
       
+printf("16.1\n");
         while(pivot_buffer < *right_ptr)
           right_ptr--;
       
+printf("16.2\n");
         if (left_ptr < right_ptr) 
         {
           size_t q = left_ptr - v;
           size_t w = right_ptr - v;
+printf("17\n");
           SWAP_DOUBLE(q, w);
           left_ptr++;
           right_ptr--;
@@ -1895,6 +1554,7 @@ void nl_xvector_qsort_d(size_t *v, double *x, size_t first, size_t last)
       
       if (((right_ptr - v)- lo) <= MAX_THRESH) 
       {
+printf("18\n");
         if ((hi - (left_ptr - v)) <= MAX_THRESH)
           POP (lo, hi); 
         else
@@ -1912,14 +1572,17 @@ void nl_xvector_qsort_d(size_t *v, double *x, size_t first, size_t last)
             PUSH (left_ptr - v, hi);
             hi = right_ptr - v;
           }
+printf("19\n");
     }
   }
   {
     size_t end_ptr = last;
     size_t run_ptr;
     size_t tmp_ptr = first;
-    size_t thresh = MIN (end_ptr, first + MAX_THRESH);
+    size_t thresh = NL_MIN (end_ptr, first + MAX_THRESH);
     
+printf("2 I'm here!\n");
+
     for (run_ptr = tmp_ptr + 1; run_ptr <= thresh; run_ptr++)
       if(v[run_ptr] < v[tmp_ptr])
         tmp_ptr = run_ptr;
@@ -2052,7 +1715,7 @@ void nl_xvector_qsort_x(size_t *v, size_t *x, size_t first, size_t last)
     size_t end_ptr = last;
     size_t run_ptr;
     size_t tmp_ptr = first;
-    size_t thresh = MIN (end_ptr, first + MAX_THRESH);
+    size_t thresh = NL_MIN (end_ptr, first + MAX_THRESH);
     
     for (run_ptr = tmp_ptr + 1; run_ptr <= thresh; run_ptr++)
       if(v[run_ptr] < v[tmp_ptr])
@@ -2185,7 +1848,7 @@ void nl_xvector_qsort(size_t *v, size_t first, size_t last)
     size_t end_ptr = last;
     size_t run_ptr;
     size_t tmp_ptr = first;
-    size_t thresh = MIN (end_ptr, first + MAX_THRESH);
+    size_t thresh = NL_MIN (end_ptr, first + MAX_THRESH);
     
     for (run_ptr = tmp_ptr + 1; run_ptr <= thresh; run_ptr++)
       if(v[run_ptr] < v[tmp_ptr])
@@ -2222,8 +1885,6 @@ void nl_xvector_qsort(size_t *v, size_t first, size_t last)
   }
 }
 
-#undef MIN
-#undef MAX
 #undef MAX_THRESH
 #undef STACK_SIZE
 #undef PUSH

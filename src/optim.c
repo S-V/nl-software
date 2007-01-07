@@ -154,13 +154,13 @@ double optim_min(double (*fun)(double), double a, double b, double abstol)
 
 }
 
-void opt_nelder_mead(
+void optim_nelder_mead(
   double (*fun)(double*),
   size_t n,  
   double *x0,
   double *f0,
   int initsimplex,
-  double **x, /* (n + 1)*n matrix: vertices of the current simplex */
+  double *x, /* (n + 1)*n matrix: vertices of the current simplex */
   double *f, /* n + 1 values of the function in the vertices */
   double tolf, double tolx,
   int maxfunevals, int maxiter,
@@ -192,20 +192,20 @@ void opt_nelder_mead(
   if (initsimplex)
   {
     for (j = 0; j < n; j++)
-      x0[j] = x[0][j];
+      x0[j] = x[j]; /* x(0, j) */
   }
   else
   {
     for (j = 0; j < n; j++)
-      x[0][j] = x0[j];
+      x[j] = x0[j];
 
     for (i = 1; i <= n; i++)
-      x[i][i - 1] = x0[i - 1] != 0.0 ? 
+      x[i*n + i - 1] = x0[i - 1] != 0.0 ? 
         (1 + rel_init_simplex_quota) * x0[i - 1] : abs_init_simplex_quota;
   }
 
   for (i = 0; i <= n; i++)
-    f[i] = (*fun)(x[i]);
+    f[i] = (*fun)(x + i*n);
   
   *rc = 1;
   *nfunevals = n + 1;
@@ -248,7 +248,7 @@ void opt_nelder_mead(
       if (i != imin)
         for (j = 0; j < n; j++)
         {
-          d = fabs(x[i][j] - x[imin][j]);
+          d = fabs(x[i*n + j] - x[imin*n + j]);
           if (d > diam)
             diam = d;
         }
@@ -267,7 +267,7 @@ void opt_nelder_mead(
     for (i = 0; i <= n; i++)
       if (i != imax)
         for (j = 0; j < n; j++)
-          xbar[j] += x[i][j];
+          xbar[j] += x[i*n + j];
 
     for (j = 0; j < n; j++)
       xbar[j] /= (double)n;
@@ -275,7 +275,7 @@ void opt_nelder_mead(
     /* Compute the reflection point xr */
     
     for (j = 0; j < n; j++)
-      xr[j] = (1 + alpha) * xbar[j] - alpha * x[imax][j];
+      xr[j] = (1 + alpha) * xbar[j] - alpha * x[imax*n + j];
 
     fr = (*fun)(xr);
     (*nfunevals)++;
@@ -295,7 +295,7 @@ void opt_nelder_mead(
         /* Expand the simplex */
 
         for (j = 0; j < n; j++)
-          x[imax][j] = xe[j];
+          x[imax*n + j] = xe[j];
         f[imax] = fe;
       }
       else
@@ -303,7 +303,7 @@ void opt_nelder_mead(
         /* Reflect the simplex */
 
         for (j = 0; j < n; j++)
-          x[imax][j] = xr[j];
+          x[imax*n + j] = xr[j];
         f[imax] = fr;
       }
     }
@@ -314,7 +314,7 @@ void opt_nelder_mead(
         /* Reflect the simplex */
 
         for (j = 0; j < n; j++)
-          x[imax][j] = xr[j];
+          x[imax*n + j] = xr[j];
         f[imax] = fr;
       }
       else /* fr >= f[imax2] */
@@ -331,7 +331,7 @@ void opt_nelder_mead(
         {  
           /* Perform an inside contraction */
           for (j = 0; j < n; j++)
-            xc[j] = gamma * x[imax][j] + (1 - gamma) * xbar[j];
+            xc[j] = gamma * x[imax*n + j] + (1 - gamma) * xbar[j];
         }
 
         fc = (*fun)(xc);
@@ -341,7 +341,7 @@ void opt_nelder_mead(
         {
           /* Contract outside */
           for (j = 0; j < n; j++)
-            x[imax][j] = xc[j];
+            x[imax*n + j] = xc[j];
           f[imax] = fc;
         }
         else
@@ -351,8 +351,8 @@ void opt_nelder_mead(
             if (i != imin)
             {
               for (j = 0; j < n; j++)
-                x[i][j] = x[imin][j] + delta * (x[i][j] - x[imin][j]);
-              f[i] = (*fun)(x[i]);
+                x[i*n + j] = x[imin*n + j] + delta * (x[i*n + j] - x[imin*n + j]);
+              f[i] = (*fun)(x + i*n);
             }
           (*nfunevals) += n;
         }
@@ -363,7 +363,7 @@ void opt_nelder_mead(
   }
 
   for (j = 0; j < n; j++)
-    x0[j] = x[imin][j];
+    x0[j] = x[imin*n + j];
 
   *f0 = f[imin];
 
