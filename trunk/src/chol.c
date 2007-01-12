@@ -30,7 +30,7 @@ int chol_decomp(double* A, size_t n)
     A[i*n + i] = sqrt(diag);
   }
 
-  return 0;
+  return 1;
 }
 
 void chol_solve(double* LL, size_t n, double* b)

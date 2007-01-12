@@ -25,7 +25,7 @@ int main(void)
   size_t n;
   double *x0, *x, *f, *work;
   double f0;
-  double tolf, tolx;
+  double ftol, xtol;
   int maxfun, maxiter, rc, nfun, niter;
 
   n = 2;
@@ -37,15 +37,15 @@ int main(void)
 
   x0[0] = -1.2;
   x0[1] = 1;
-  tolf = 1.0e-6;
-  tolx = 1.0e-6;
+  ftol = 1.0e-6;
+  xtol = 1.0e-6;
   maxfun = 200;
   maxiter = 50;
 
-  optim_nelder_mead(fun, n, x0, &f0, 0, x, f, tolf, tolx, maxfun, maxiter, 
-    &rc, &nfun, &niter, work);
+  rc = optim_nelder_mead(fun, n, 0, x0, &f0, x, f, ftol, xtol, maxfun, maxiter, 
+    &nfun, &niter, work);
 
-  if (rc)
+  if (rc == -1)
   {
     printf("\nЧисло итераций или количество вычисленных значений функции\n");
     printf("превысило максимально допустимое!\n" );
