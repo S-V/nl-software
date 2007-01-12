@@ -1,7 +1,6 @@
 #include <math.h>
 #include <float.h>
-#include "util.h"
-#include "optim.h"
+#include "nl.h"
 
 double optim_min(double (*fun)(double), double a, double b, double abstol) 
 {
@@ -154,17 +153,16 @@ double optim_min(double (*fun)(double), double a, double b, double abstol)
 
 }
 
-void optim_nelder_mead(
+int optim_nelder_mead(
   double (*fun)(double*),
   size_t n,  
+  int initsimplex,
   double *x0,
   double *f0,
-  int initsimplex,
   double *x, /* (n + 1)*n matrix: vertices of the current simplex */
   double *f, /* n + 1 values of the function in the vertices */
-  double tolf, double tolx,
+  double ftol, double xtol,
   int maxfunevals, int maxiter,
-  int *rc,
   int *nfunevals, int *niter,
   double *work)
 {
@@ -174,6 +172,7 @@ void optim_nelder_mead(
   size_t imin, imax, imax2; /* the indices of the highest (worst), 
     next-highest, and lowest (best) vertices of the simplex */
   size_t i, j;
+  int rc;
 
   const double alpha = 1.0;
   const double beta  = 2.0;
@@ -207,7 +206,7 @@ void optim_nelder_mead(
   for (i = 0; i <= n; i++)
     f[i] = (*fun)(x + i*n);
   
-  *rc = 1;
+  rc = -1;
   *nfunevals = n + 1;
   *niter = 0;
 
@@ -253,9 +252,9 @@ void optim_nelder_mead(
             diam = d;
         }
 
-    if (f[imax] - f[imin] <= tolf && diam <= tolx)
+    if (f[imax] - f[imin] <= ftol && diam <= xtol)
     {
-      *rc = 0;
+      rc = 1;
       break;
     }
     
@@ -366,6 +365,320 @@ void optim_nelder_mead(
     x0[j] = x[imin*n + j];
 
   *f0 = f[imin];
+
+  return rc;
+
+}
+
+
+void
+optim_hooke_jeeves_explore(
+   double (*fun)(double*), 
+   double *x, 
+   double f, 
+   double *h, 
+   size_t n, 
+   int *nfunevals,
+   double *fnew)
+{
+   double fmin;
+   size_t j;
+
+   fmin = f;
+
+   for (j = 0; j < n; j++) 
+   {
+      x[j] += h[j];
+
+      f = (*fun)(x);
+      (*nfunevals)++;
+
+      if (f < fmin)
+         fmin = f;
+      else 
+      {
+         h[j] = -h[j];
+         x[j] += 2*h[j];
+
+         f = (*fun)(x);
+         (*nfunevals)++;
+
+         if (f < fmin)
+            fmin = f;
+         else
+            x[j] -= h[j];
+      }
+   }
+
+   *fnew = fmin;
+}
+
+/* ќстерегаемс€ слишком маленьких шагов;
+   fnew < f может €витьс€ следствием ошибок округлени€ */
+
+int optim_hooke_jeeves_is_step_too_small(double* x, double* xnew, double* h, size_t n)
+{
+   size_t j;
+
+   for (j = 0; j < n; j++) 
+   {
+      if (fabs(xnew[j] - x[j]) > (0.5 * fabs(h[j])))
+         return 0;
+   }
+   return 1;
+}
+
+int optim_hooke_jeeves(
+   double (*fun)(double*), 
+   size_t n, 
+   double* x,
+   double alpha,  /* 0 < alpha < 1 может сильно повли€ть на сходимость */
+   double ftol, double xtol, 
+   int maxfunevals, int maxiter, 
+   double *f, 
+   int *nfunevals, int *niter, 
+   double *work)  
+{
+  double fnew, delta, xx;
+  double *xnew, *h;
+  size_t j;
+
+  xnew = work;
+  h = work + n;
+
+  delta = alpha;
+
+  for (j = 0; j < n; j++) 
+  {
+     h[j] = NL_MAX(alpha*fabs(x[j]), alpha);
+  }
+
+  *f = (*fun)(x);
+
+  *nfunevals = 1;
+  *niter = 0;
+
+  while (1)
+  {
+     (*niter)++;
+
+     if (delta <= xtol)
+       return 1;
+
+     if (*niter > maxiter)
+       return -1;
+
+     /* ѕоиск в окрестности */
+
+     cblas_dcopy(n, x, 1, xnew, 1);
+     optim_hooke_jeeves_explore(fun, xnew, *f, h, n, nfunevals, &fnew);
+
+     if (*nfunevals > maxfunevals)
+        return -1;
+
+     if (fnew >= *f) 
+     {
+        delta *= alpha;
+        cblas_dscal(n, alpha, h, 1);
+     }
+     else if (!optim_hooke_jeeves_is_step_too_small(x, xnew, h, n))
+     {
+        /* Ўаг по образцу */
+
+        for (j = 0; j < n; j++) 
+        {
+           if (xnew[j] <= x[j])
+              h[j] = -fabs(h[j]);
+           else
+              h[j] = fabs(h[j]);
+           
+           xx = x[j];
+           x[j] = xnew[j];
+           xnew[j] += xnew[j] - xx;
+        }
+
+        /* ѕоиск в окрестности */
+
+        *f = fnew;
+        optim_hooke_jeeves_explore(fun, xnew, *f, h, n, nfunevals, &fnew);
+
+        if (*nfunevals > maxfunevals)
+           return -1;
+
+        if (fnew < *f)
+        {
+           cblas_dcopy(n, xnew, 1, x, 1);
+           *f = fnew;
+        }
+     }
+  }
+}
+
+
+double optim_levenberg_marquardt_max_diag(double *A, size_t n)
+{
+   double x;
+   size_t i;
+
+   x = A[0];
+
+   for (i = n + 1; i < n*n; i += n + 1)
+   {
+      if (A[i] > x)
+         x = A[i];
+   }
+
+   return x;
+}
+
+void optim_levenberg_marquardt_A_plus_diag(double *A, size_t n, double alpha)
+{
+   size_t i;
+
+   for (i = 0; i < n*n; i += n + 1)
+   {
+      A[i] += alpha;
+   }
+}
+
+double optim_levenberg_marquardt_squares_sum(double *f, size_t m)
+{
+   double x;
+   size_t j;
+
+   x = 0;
+
+   for (j = 0; j < m; j++)
+     x += f[j]*f[j];
+
+   return x;
+}
+
+
+int optim_levenberg_marquardt(
+   void (*fun)(double*, double*), 
+   void (*jac)(double*, double*), 
+   size_t n, 
+   size_t m, 
+   double* x, 
+   double ftol, 
+   double xtol, 
+   int maxfunevals, 
+   int maxiter, 
+   double *f0, 
+   double *f, 
+   int *niter, 
+   int *nfunevals, 
+   int *njacevals, 
+   double *J, 
+   double *g, 
+   double *A, 
+   double *work)  
+{
+   double alpha, beta, *xnew, *h, *fnew, rho, mu, xnrm2, f0new;
+
+   h = work;
+   xnew = work + n;
+   fnew = work + 2*n; //fnew (m)
+
+   *niter = 0;
+   *nfunevals = 0;
+   *njacevals = 0;
+
+   beta = 2;
+
+   (*fun)(x, f);
+   (*jac)(x, J);
+
+   (*nfunevals)++;
+   (*njacevals)++;
+
+   *f0 = optim_levenberg_marquardt_squares_sum(f, n);
+
+   xnrm2 = cblas_dnrm2(n, x, 1);
+
+   cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, n, n, m, 
+      1, J, n, J, n, 0, A, n);  /* A = J'*J */
+   cblas_dgemv(CblasRowMajor, CblasTrans, m, n, 1, J, n, f, 1, 0, g, 1); /* g = J'*f */
+   cblas_dscal(n, -1, g, 1);    /* g = -g */
+
+   if (fabs(g[cblas_idamax(n, g, 1)]) <= ftol*NL_MAX(1, xnrm2))
+   {
+      return 1;
+   }
+
+   alpha = 0.5*optim_levenberg_marquardt_max_diag(A, n);
+
+   while(1)
+   {
+      if (*niter > maxiter)
+      {
+         return -1;
+      }
+      
+      (*niter)++;
+   
+      optim_levenberg_marquardt_A_plus_diag(A, n, alpha);	/* A = A + alpha*I */
+
+      if (chol_decomp(A, n) != 1)
+      {
+          return -3;
+      }
+      cblas_dcopy(n, g, 1, h, 1);
+      chol_solve(A, n, h);	/* решение записано в h */
+
+      if (cblas_dnrm2(n, h, 1) <= xtol*(xnrm2 + xtol))
+      {
+         return 2;
+      }
+
+      cblas_dcopy(n, x, 1, xnew, 1);
+      cblas_daxpy(n, 1, h, 1, xnew, 1);		/* xnew = x + h */
+
+      cblas_daxpy(n, alpha, h, 1, g, 1);	/* g += alpha*h */
+
+      (*fun)(xnew, fnew);
+
+      (*nfunevals)++;
+
+      f0new = optim_levenberg_marquardt_squares_sum(fnew, m);
+
+      rho = 2*((*f0) - f0new)/cblas_ddot(n, h, 1, g, 1);
+
+      if (rho > 0)
+      {
+         cblas_dcopy(n, xnew, 1, x, 1);
+         cblas_dcopy(m, fnew, 1, f, 1);
+         *f0 = f0new;
+
+         xnrm2 = cblas_dnrm2(n, x, 1);
+
+         (*jac)(x, J);
+         (*njacevals)++;
+         
+         cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, n, n, m, 
+            1, J, n, J, n, 0, A, n);  /* A = J'*J */
+         cblas_dgemv(CblasRowMajor, CblasTrans, m, n, 1, J, n, f, 1, 0, g, 1); /* g = J'*f */
+         cblas_dscal(n, -1, g, 1);    /* g = -g */
+
+         if (fabs(g[cblas_idamax(n, g, 1)]) <= ftol*NL_MAX(1, xnrm2))
+         {
+            return 1;
+         }         
+
+         mu = 2*rho - 1;
+         mu = 1 - mu*mu*mu;
+
+         alpha = alpha*NL_MAX(0.3, mu);
+         beta = 2;
+      }
+      else
+      {
+         alpha *= beta;
+         beta *= 2;
+      }
+      
+   }
 
 }
 
