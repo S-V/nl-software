@@ -19,7 +19,7 @@ int main()
   double *b;
   double x[] = {0, 0, 0, 0, 0};
   double *work;
-  int it;
+  int niter, rc;
 
   double xx[] = {1, 1, 1, 1, 1};
 
@@ -38,12 +38,15 @@ int main()
   printf("\nВектор b:\n");
   nl_dvector_print(b, n, 0);
 
-  it = iter_bicg(IA, JA, AN, b, n, 1e-3, 20, x, NULL, NULL, NULL, NULL, NULL, NULL, work);
+  rc = iter_bicg(IA, JA, AN, b, n, 1e-3, 20, x, NULL, NULL, NULL, NULL, NULL, NULL, &niter, work);
+
+  if (rc != 1)
+    printf("Заданная точность не достигнута за максимальное число итераций");
   
   printf("\nРешение системы Ax = b:\n");
   nl_dvector_print(x, n, 0);
 
-  printf("\nЧисло итераций = %i \n", it);
+  printf("\nЧисло итераций = %i \n", niter);
 
   sp_free(IA, JA, AN);
   nl_dvector_free(b);

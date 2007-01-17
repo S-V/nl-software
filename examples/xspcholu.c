@@ -32,7 +32,7 @@ int main()
 
   sp_create(5, 4, &IU, &JU, &UN);
   sp_chol_symb(IA, JA, 5, IU, JU, 5, xwork);
-  sp_chol_num(IA, JA, AN, D, IU, JU, 5, UN, DINV, xwork);
+  sp_chol_num(IA, JA, AN, D, IU, JU, 5, UN, DINV);
 
   printf("\nВерхнетреугольная часть матрицы U:\n");
   sp_print_list(IU, JU, UN, 5, 5, 0, 0);

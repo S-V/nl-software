@@ -7,7 +7,7 @@ int iter_bicg(
   double *b, 
   size_t n, 
   double tol, 
-  int max_iter, 
+  int maxiter, 
   double *x,
   size_t *IM, 
   size_t *JM, 
@@ -15,12 +15,12 @@ int iter_bicg(
   size_t *IK, 
   size_t *JK, 
   double *KN,
+  int *niter,
   double *work)
 {
   double *r, *r_tilde, *p, *p_tilde, *z, *z_tilde; 
   double r_tilde_z, r_tilde_z_new, norm_b, rel_tol, alpha, beta;   
   size_t j;
-  int it;
 
   r = work;
   r_tilde = r + n;
@@ -50,12 +50,16 @@ int iter_bicg(
     return 0;
   }
 
-  rel_tol = norm_b*tol;
+  rel_tol = (norm_b + 1)*tol;
 
-  it = 0;
+  (*niter) = 0;
 
-  while (cblas_dnrm2(n, r, 1) > rel_tol && ++it <= max_iter)
+  while (cblas_dnrm2(n, r, 1) > rel_tol)
   {
+    (*niter)++;
+    if (*niter > maxiter)
+       return 0;
+
     sp_mult_col(IA, JA, AN, p, n, z_tilde); /* here z_tilde is used as temp value A*p */
 
     alpha = r_tilde_z / cblas_ddot(n, p_tilde, 1, z_tilde, 1);
@@ -80,5 +84,5 @@ int iter_bicg(
     r_tilde_z = r_tilde_z_new;
   }
 
-  return it;
+  return 1;
 }
