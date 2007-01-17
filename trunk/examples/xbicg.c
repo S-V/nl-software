@@ -38,7 +38,8 @@ int main()
   printf("\nВектор b:\n");
   nl_dvector_print(b, n, 0);
 
-  rc = iter_bicg(IA, JA, AN, b, n, 1e-3, 20, x, NULL, NULL, NULL, NULL, NULL, NULL, &niter, work);
+  rc = iter_bicg(IA, JA, AN, b, n, 1e-3, 20, x, 
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, &niter, work);
 
   if (rc != 1)
     printf("Заданная точность не достигнута за максимальное число итераций");
