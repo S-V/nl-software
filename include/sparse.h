@@ -589,7 +589,8 @@ extern void sp_row_nz_sym(size_t* IA, size_t* JA, size_t n, size_t* nz);
 extern void sp_colperm_sym(size_t* IA, size_t* JA, size_t n, size_t* p, size_t *xwork);
 
 /**
-  Перестановка строк и столбцов симметричной матрицы
+  Перестановка строк и столбцов симметричной матрицы.
+
   - Вход:
          - \f$IA\f$, \f$JA\f$, \f$AN\f$, \f$AD\f$ - разреженая симметричная матрица
            \f$A\f$ в формате RR(U)U

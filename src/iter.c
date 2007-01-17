@@ -12,9 +12,11 @@ int iter_bicg(
   size_t *IM, 
   size_t *JM, 
   double *MN,
+  double *MD,
   size_t *IK, 
   size_t *JK, 
   double *KN,
+  double *KD,
   int *niter,
   double *work)
 {
@@ -36,7 +38,7 @@ int iter_bicg(
   cblas_dcopy(n, r, 1, r_tilde, 1);
 
   cblas_dcopy(n, r, 1, p, 1); /* нужно: p = M\r; */
-  cblas_dcopy(n, r_tilde, 1, p_tilde, 1); /* ружно: p_tilde = r_tilde/M; */
+  cblas_dcopy(n, r_tilde, 1, p_tilde, 1); /* нужно: p_tilde = r_tilde/M; */
 
   cblas_dcopy(n, p, 1, z, 1);
   cblas_dcopy(n, p_tilde, 1, z_tilde, 1);
