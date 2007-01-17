@@ -1,31 +1,32 @@
-#include <stdlib.h>
 #include <memory.h>
 
-#include "mda.h"
+#include "nl.h"
 
-#define MDA_MIN(a, b)  (((a) < (b))? (a):(b))
-#define MDA_MAX(a, b)  (((a) > (b))? (a):(b))
-
-/*
-  ╬сючэрўхэш :
-
-  n        - яюЁ фюъ ьрЄЁшЎ√ A
-  nz       - ўшёыю эхэєыхт√ї ¤ыхьхэЄют ьрЄЁшЎ√ A т√°х(эшцх) фшруюэрыш
-  R        - эрффшруюэры№эр  яюфьрЄЁшЎр ьрЄЁшЎ√ A
-  L        - яюффшруюэры№эр  яюфьрЄЁшЎр ьрЄЁшЎ√ A
-  (IR, JR) - ёЄЁюўэюх яЁхфёЄртыхэшх ьрЄЁшЎ√ R
-  (IL, JL) - ёЄЁюўэюх яЁхфёЄртыхэшх ьрЄЁшЎ√ L
-  P        - яхЁхёЄрэютър єчыют
-  IP       - юсЁрЄэр  яхЁхёЄрэютър (IP[P[i]] = i ш эрюсюЁюЄ P[IP[i]] = i)
-  D        - ёЄхяхэш єчыют
-  M        - ьхЄъш єчыют
-  L        - ёяшёюъ фюёЄшцшь√ї єчыют
-  MR       - ёяшёъш ёышЄ√ї єчыют
-
-*/
+/* 
+ *  А.Н.Микишев
+ *  Н.Ю.Золотых  2005, 2006, 2007
+ */
 
 /*
- * ╬яхЁрЎшш ё 2-ъєўхщ
+ *  Обозначения:
+ * 
+ *  n        - порядок матрицы A
+ *  nz       - число ненулевых элементов матрицы A выше(ниже) диагонали
+ *  R        - наддиагональная подматрица матрицы A
+ *  L        - поддиагональная подматрица матрицы A
+ *  (IR, JR) - строчное представление матрицы R
+ *  (IL, JL) - строчное представление матрицы L
+ *  P        - перестановка узлов
+ *  IP       - обратная перестановка (IP[P[i]] = i и наоборот P[IP[i]] = i)
+ *  D        - степени узлов
+ *  M        - метки узлов
+ *  L        - список достижимых узлов
+ *  MR       - списки слитых узлов
+ * 
+ */
+
+/*
+ *  Операции с 2-кучей
  */
 
 size_t heap_pos(size_t i, size_t n)
@@ -33,21 +34,21 @@ size_t heap_pos(size_t i, size_t n)
   return n - 1 - i;
 }
 
-/* ┬ючтЁр∙рхЄ ЁюфшЄхы  фы  i-ую єчыр 2-ъєўш */
+/* Возвращает родителя для i-го узла 2-кучи */
 size_t heap_parent(size_t i, size_t n)
 {
   i = heap_pos(i, n);
   return heap_pos((i - 1)/2, n);
 }
 
-/* ┬ючтЁр∙рхЄ сышцрщ°хую яю эюьхЁє яюЄюьър фы  i-ую єчыр 2-ъєўш */
+/* Возвращает ближайшего по номеру потомка для i-го узла 2-кучи */
 size_t heap_child(size_t i, size_t h, size_t n)
 {
   i = 2*heap_pos(i, n) + 1;
   return (n - 1 >= i + h)? n - 1 - i: n;
 }
 
-/* ╬яхЁрЎш  тёяы√Єш  i-ую єчыр 2-ъєўш */
+/* Операция всплытия i-го узла 2-кучи */
 size_t heap_up(size_t i, size_t n, size_t *D, size_t *P, size_t *IP)
 {
   size_t p = P[i], deg = D[i], parent;
@@ -64,7 +65,7 @@ size_t heap_up(size_t i, size_t n, size_t *D, size_t *P, size_t *IP)
   return i;
 }
 
-/* ┬ючтЁр∙рхЄ яюЄюьър ё ьхэ№°хщ ёЄхяхэ№■ фы  i-ую єчыр 2-ъєўш */
+/* Возвращает потомка с меньшей степенью для i-го узла 2-кучи */
 size_t heap_min_child(size_t i, size_t h, size_t n, size_t *D)
 {
   size_t c = heap_child(i, h, n);
@@ -72,7 +73,7 @@ size_t heap_min_child(size_t i, size_t h, size_t n, size_t *D)
   return (D[c] <= D[c - 1])? c: c - 1;
 }
 
-/* ╬яхЁрЎш  яюуЁєцхэш  i-ую єчыр 2-ъєўш */
+/* Операция погружения i-го узла 2-кучи */
 size_t heap_down(size_t i, size_t h, size_t n, size_t *D, size_t *P, size_t *IP)
 {
   size_t p = P[i], deg = D[i], child = heap_min_child(i, h, n, D);
@@ -88,7 +89,7 @@ size_t heap_down(size_t i, size_t h, size_t n, size_t *D, size_t *P, size_t *IP)
   return i;
 }
 
-/* ╙фрыхэшх i-ую єчыр ьшэшьры№эющ ёЄхяхэш шч 2-ъєўш */
+/* Удаление i-го узла минимальной степени из 2-кучи */
 size_t heap_del_min(size_t i, size_t h, size_t n, size_t *D, size_t *P, size_t *IP)
 {
   size_t t;
@@ -98,7 +99,7 @@ size_t heap_del_min(size_t i, size_t h, size_t n, size_t *D, size_t *P, size_t *
   return heap_down(i, h + 1, n, D, P, IP);
 }
 
-/* ╚чьхэхэшх ёЄхяхэш i-ую єчыр 2-ъєўш */
+/* Изменение степени i-го узла 2-кучи */
 size_t heap_change(size_t i, size_t deg, size_t h, size_t n, size_t *D, size_t *P,
   size_t *IP)
 {
@@ -116,10 +117,10 @@ size_t heap_change(size_t i, size_t deg, size_t h, size_t n, size_t *D, size_t *
 }
 
 /* 
-  ╥хёЄшЁютрэшх ёюёЄю эш  2-ъєўш 
-  0 - ъєўр т яюЁ фъх
-  1 - эрЁє°хэ ъєўхюсЁрчэ√щ яюЁ фюъ
-  2 - эрЁє°хэ√ шэфхъёэ√х ьрёёшт√
+  Тестирование состояния 2-кучи 
+  0 - куча в порядке
+  1 - нарушен кучеобразный порядок
+  2 - нарушены индексные массивы
 */
 int heap_test(size_t h, size_t n, size_t *D, size_t *P, size_t *IP)
 {
@@ -133,7 +134,7 @@ int heap_test(size_t h, size_t n, size_t *D, size_t *P, size_t *IP)
   return 0;
 }
 
-/* ╬яхЁрЎш  яюуЁєцхэш  i-ую єчыр 2-ъєўш */
+/* Операция погружения i-го узла 2-кучи */
 size_t heap_down_m(size_t i, size_t h, size_t n, size_t *D)
 {
   size_t deg = D[i], child = heap_min_child(i, h, n, D);
@@ -147,13 +148,13 @@ size_t heap_down_m(size_t i, size_t h, size_t n, size_t *D)
   return i;
 }
 
-/* ╤юЁЄшЁютър ьрёёштр I[h, n - 1] ё яюью∙№■ 2-ъєўш */
+/* Сортировка массива I[h, n - 1] с помощью 2-кучи */
 void heap_sort(size_t h, size_t n, size_t *I)
 {
   size_t i, t;
-  /* юъєўштрэшх */
+  /* окучивание */
   for(i = h + 1; i < n; i++) heap_down_m(i, h, n, I);
-  /* юъюэўрЄхы№эр  ёюЁЄшЁютър */
+  /* окончательная сортировка */
   for(i = h; i < n - 1; i++)
   {
     t = I[i];
@@ -164,9 +165,9 @@ void heap_sort(size_t h, size_t n, size_t *I)
 }
 
 /* 
-  ┴шэрЁэ√щ яюшёъ ¤ыхьхэЄр a т ьрёёштх I[h, n - 1]
-  хёыш ¤ыхьхэЄ a эрщфхэ, Єю тючтЁр∙рхЄё  єърчрЄхы№ эр эхую
-  шэрўх тючтЁр∙рхЄё  NULL
+   Бинарный поиск элемента a в массиве I[h, n - 1]
+   если элемент a найден, то возвращается указатель на него
+   иначе возвращается NULL
 */
 size_t* binary_search(size_t a, size_t h, size_t n, size_t *I)
 {
@@ -185,7 +186,7 @@ size_t* binary_search(size_t a, size_t h, size_t n, size_t *I)
 
 
 /*
- * ╨хрышчрЎш  MDA
+ *  Реализация MDA
  */
 
 void mda_create(size_t n, size_t nz, size_t **IA, size_t **JA, size_t **D,
@@ -257,10 +258,10 @@ void mda_convert( size_t n, size_t *IS, size_t *JS, size_t *IA, size_t *JA,
 }
 
 /* 
-  node - єчхы ьшэшьры№эющ ёЄхяхэш 
-  ЇєэъЎш  эрїюфшЄ хую фюёЄшцшьюх ьэюцхёЄтю R
-  яЁюшчтюфшЄё  ёыш эшх node ш ёьхцэ√ї шёъы■ўхээ√ї ёєяхЁєчыют
-  яЁюшчтюфшЄё  яЁхфтрЁшЄхы№эр  єяръютър ёышЄюую ёєяхЁєчыр
+   node - узел минимальной степени 
+   функция находит его достижимое множество R
+   производится слияние node и смежных исключенных суперузлов
+   производится предварительная упаковка слитого суперузла
 */
 size_t mda_reach(size_t node, size_t h, size_t m, size_t n, size_t *IA,
   size_t *JA, size_t *M, size_t *L, size_t *IP)
@@ -268,28 +269,28 @@ size_t mda_reach(size_t node, size_t h, size_t m, size_t n, size_t *IA,
   size_t i, j, l, r = n;
   L[node] = node;
   M[node] = m;
-  /* чрэхёхэшх т R єчыют, ёьхцэ√ї ё node */
+  /* занесение в R узлов, смежных с node */
   for(j = IA[node]; (j < IA[node + 1]) && (IP[i = JA[j]] > h); j++)
   {
     M[i] = m;
     L[i] = r;
     r = i;
   }
-  /* ёыш эшх node ш ёьхцэ√ї ё эшь ёєяхЁєчыют */
+  /* слияние node и смежных с ним суперузлов */
   for( ; (j < IA[node + 1]) && ((i = JA[j]) != n); j++)
   {
     l = L[node];
     L[node] = L[i];
     L[i] = l;
   }
-  /* чрэхёхэшх т R єчыют, ёьхцэ√ї ёю ёышЄ√ьш ёєяхЁєчырьш */
-  /* яЁхфтрЁшЄхы№эр  єяръютър ёєяхЁєчыр node */
+  /* занесение в R узлов, смежных со слитыми суперузлами */
+  /* предварительная упаковка суперузла node */
   for(l = L[node]; l != node; l = L[l])
   {
     M[l] = m;
     for(j = IA[l]; (j < IA[l + 1]) && ((i = JA[j]) != l) && (IP[i] >= h); j++)
     {
-      if(M[i] == m)  /* єфры хь яютЄюЁ ■∙шхё  ёё√ыъш */
+      if(M[i] == m)  /* удаляем повторяющиеся ссылки */
       {
         JA[j] = node;
         continue;
@@ -299,27 +300,27 @@ size_t mda_reach(size_t node, size_t h, size_t m, size_t n, size_t *IA,
       r = i;
     }
   }
-  /* фюёЄшцшьюх ьэюцхёЄтю R яюёЄЁюхэю */
+  /* достижимое множество R построено */
   return r;
 }
 
 /* 
-  r - єчхы фюёЄшцшьюую ьэюцхёЄтр R
-  ЇєэъЎш  тючтЁр∙рхЄ ъюы-тю єчыют, фюёЄшцшь√ї шч r
-  ш эх тїюф ∙шї т фюёЄшцшьюх ьэюцхёЄтю R
+  r - узел достижимого множества R
+  функция возвращает кол-во узлов, достижимых из r
+  и не входящих в достижимое множество R
 */
 size_t mda_degree(size_t r, size_t h, size_t m, size_t mm, size_t n,
   size_t *IA, size_t *JA, size_t *M, size_t *L, size_t *IP)
 {
   size_t i, j, k, t, l, f, d0, d = 0;
-  /* яЁюїюф ёьхцэ√ї єчыют */
+  /* проход смежных узлов */
   for(j = IA[r]; (j < IA[r + 1]) && (IP[i = JA[j]] >= h); j++)
   {
     if(M[i] == m) continue;
     M[i] = mm;
     d++;
   }
-  /* яЁюїюф ёьхцэ√ї ёєяхЁєчыют */
+  /* проход смежных суперузлов */
   for( ; (j < IA[r + 1]) && ((i = JA[j]) != n); j++)
   {
     if(M[i] == m) continue;
@@ -339,19 +340,19 @@ size_t mda_degree(size_t r, size_t h, size_t m, size_t mm, size_t n,
       l = L[l];
     }
     while(l != i);
-    /* хёыш ёєяхЁєчхы ёюфхЁцшЄ єцх яЁющфхээ√х ёё√ыъш, Єю єфры хь хую */
+    /* если суперузел содержит уже пройденные ссылки, то удаляем его */
     if(d == d0) JA[j] = r;
-    /* хёыш ёєяхЁєчхы ёё√ырхЄё  Єюы№ъю эр єчы√ шч R,   
-       Єю яюьхўрхь хую, ўЄюс√ сюы№°х хую эх яЁюїюфшЄ№ */
+    /* если суперузел ссылается только на узлы из R,   
+       то помечаем его, чтобы больше его не проходить */
     if(f == 0) M[i] = m;
   }
   return d;
 }
 
 /*  
-  яЁюїюф фюёЄшцшьюую ьэюцхёЄтр R
-  эхЁрчышўшь√х ё node єчы√ шёъы■ўр■Єё 
-  фы  юёЄры№э√ї єчыют юяЁхфхы ■Єё  эют√х ёЄхяхэш
+  проход достижимого множества R
+  неразличимые с node узлы исключаются
+  для остальных узлов определяются новые степени
 */
 size_t mda_process( size_t r, size_t node, size_t h, size_t m, size_t n,
   size_t *IA, size_t *JA, size_t *M, size_t *L, size_t *D, size_t *P, size_t *IP)
@@ -375,14 +376,14 @@ size_t mda_process( size_t r, size_t node, size_t h, size_t m, size_t n,
 }
 
 /* 
-  юсэютыхэшх ёЄхяхэхщ эхшёъы■ўхээ√ї єчыют фюёЄшцшьюую ьэюцхёЄтр R
-  єяръютър ёєяхЁєчыр node 
+  обновление степеней неисключенных узлов достижимого множества R
+  упаковка суперузла node 
 */
 size_t mda_update( size_t node, size_t h, size_t hh, size_t n, size_t *IA,
   size_t *JA, size_t *L, size_t *D, size_t *P, size_t *IP)
 {
   size_t i, j, k, l, t, r = n, d = D[h] - hh + h;
-  /* єяръютър єчыр node */
+  /* упаковка узла node */
   for(k = j = IA[node]; (j < IA[node + 1]) && (IP[i = JA[j]] > h); j++)
   {
     if(IP[i] < hh) continue;
@@ -396,7 +397,7 @@ size_t mda_update( size_t node, size_t h, size_t hh, size_t n, size_t *IA,
     L[i] = r;
     r = i;
   }
-  /* єяръютър ёєяхЁєчыют, ёьхцэ√ї ё node */
+  /* упаковка суперузлов, смежных с node */
   for(t = node, l = L[node]; l != node; l = L[t])
   {
     for(k = j = IA[l]; (j < IA[l + 1]) && ((i = JA[j]) != l) && (IP[i] >= h); j++)
@@ -417,7 +418,7 @@ size_t mda_update( size_t node, size_t h, size_t hh, size_t n, size_t *IA,
   return r;
 }
 
-/* єяръютър эхшёъы■ўхээ√ї єчыют фюёЄшцшьюую ьэюцхёЄтр R */
+/* упаковка неисключенных узлов достижимого множества R */
 void mda_pack( size_t node, size_t r, size_t m, size_t n, size_t *IA, size_t *JA,
   size_t *M, size_t *L)
 {
@@ -468,29 +469,38 @@ size_t mda_order(size_t n, size_t *IA, size_t *JA, size_t *M, size_t *L,
   return size;
 }
 
+/* Алгоритм Холецкого */
+
 void mda_chol_symb(size_t n, size_t unz, size_t *IS, size_t *JS, size_t *IU,
   size_t *JU, size_t *M, size_t *L, size_t *D, size_t *IP)
 {
   size_t i, j, k, l, t, min;
 
-  /* ЇюЁьшЁютрэшх IU */
-  for(i = 0, IU[0] = 0; i < n; i++) IU[i + 1] = IU[i] + D[i];
+  /* Формирование IU */
 
-  /* яхЁхёЄрэютър ёЄЁюъ ш ёЄюысЎют */
+  IU[0] = 0;
+
+  for(i = 0; i < n; i++) 
+    IU[i + 1] = IU[i] + D[i];
+
+  /* Перестановка строк и столбцов */
+
   for(i = 0; i < n; i++)
   {
     for(j = IS[i]; j < IS[i + 1]; j++)
     {
       k = JS[j];
-      JU[IU[MDA_MIN(IP[i], IP[k])]] = MDA_MAX(IP[i], IP[k]);
-      IU[MDA_MIN(IP[i], IP[k])]++;
+      JU[IU[NL_MIN(IP[i], IP[k])]] = NL_MAX(IP[i], IP[k]);
+      IU[NL_MIN(IP[i], IP[k])]++;
     }
   }
 
-  for(i = 0; i < n; i++) L[i] = n;
+  for(i = 0; i < n; i++) 
+    L[i] = n;
 
-  /* ёшьтюышўхёъюх Ёрчыюцхэшх */
-  for(i = 0, t = 0; i < n; i++)
+  /* Символическое разложение */
+
+  for(i = t = 0; i < n; i++)
   {
     M[i] = ++unz;
     min = n;
@@ -498,106 +508,133 @@ void mda_chol_symb(size_t n, size_t unz, size_t *IS, size_t *JS, size_t *IU,
     {
       k = JU[j];
       M[k] = unz;
-      if(k < min) min = k;
+      if (k < min) min = k;
     }
     IU[i] = t;
     t = j;
-    for(l = L[i]; l != n; l = L[l])
+    for (l = L[i]; l != n; l = L[l])
     {
-      for(j = IU[l]; j < IU[l + 1]; j++)
+      for (j = IU[l]; j < IU[l + 1]; j++)
       {
         k = JU[j];
-        if(M[k] == unz) continue;
+        if (M[k] == unz) continue;
         M[k] = unz;
-        if(k < min) min = k;
+        if (k < min) min = k;
         JU[t++] = k;
       }
     }
-    if(min == n) continue;
+    if (min == n) continue;
     l = L[min];
     L[min] = i;
     L[i] = l;
   }
+
 }
 
+
 void mda_chol_num(size_t n, size_t *IS, size_t *JS, size_t *IU, size_t *JU,
-  size_t *M, size_t *L, size_t *P, double *SN, double *SD, double *UN, double *UD)
+  size_t *P, double *SN, double *SD, double *UN, double *UD, size_t *xwork)
 {
-  size_t i, j, k, l, t, imin, imax, *p;
+  size_t i, j, k, l, t, imin, imax, *p, *M, *L;
   double m;
 
+  M = xwork;
+  L = xwork + n;
+
   memcpy(M, IU, n*sizeof(size_t));
-  for(i = 0; i < n; i++) L[i] = n;
+  for(i = 0; i < n; i++) 
+    L[i] = n;
 
   for(i = 0; i < n; i++)
   {
-    /* шэшЎшрышчрЎш  i-щ ёЄЁюъш ьрЄЁшЎ√ U 
-       ёююЄтхЄёЄтє■∙шьш чэрўхэш ьш шч ьрЄЁшЎ√ S */
+    /* Инициализация i-й строки матрицы U 
+       соответствующими значениями из матрицы S */
+
+printf("%d-я итерация:\n", i);
+sp_print_list(IU, JU, UN, n, n, NULL, NULL);
+nl_dvector_print(UD, n, NULL);
+
     UD[i] = SD[P[i]];
-    for(j = IU[i]; j < IU[i + 1]; j++)
+
+    for (k = IU[i]; k < IU[i + 1]; k++)
     {
-      k = JU[j];
-      imin = MDA_MIN(P[i], P[k]);
-      imax = MDA_MAX(P[i], P[k]);
-      p =  binary_search(imax, IS[imin], IS[imin + 1], JS);
-      if(p == NULL) UD[k] = 0; else UD[k] = SN[*p];
+      j = JU[k];
+      imin = NL_MIN(P[i], P[j]);
+      imax = NL_MAX(P[i], P[j]);
+
+      if (binary_search(imax, IS[imin], IS[imin + 1], JS)) 
+         UD[j] = SD[imax];
+      else
+         UD[j] = 0;
     }
 
-    for(l = L[i]; l != n; l = t)
+    for (l = L[i]; l != n; l = t)
     {
-      for(j = M[l], m = UN[j]*UD[l]; j < IU[l + 1]; j++)
+      for (j = M[l], m = UN[j]*UD[l]; j < IU[l + 1]; j++)
       {
         k = JU[j];
         UD[k] -= m*UN[j];
       }
       UN[M[l]] = m;
+printf("UN[M[l]] = %d\n", m);
       t = L[l];
-      if(++M[l] == IU[l + 1]) continue;
+      if (++M[l] == IU[l + 1]) continue;
       k = JU[M[l]];
       L[l] = L[k];
       L[k] = l;
     }
+
     UD[i] = 1/UD[i];
-    if(IU[i] == IU[i + 1]) continue;
+    if (IU[i] == IU[i + 1]) continue;
     k = JU[IU[i]];
     t = L[k];
     L[k] = i;
     L[i] = t;
-    for(j = IU[i]; j < IU[i + 1]; j++)
+    for (j = IU[i]; j < IU[i + 1]; j++)
     {
       k = JU[j];
       UN[j] = UD[k];
     }
   }
-
+printf("Выход\n");
+sp_print_list(IU, JU, UN, n, n, NULL, NULL);
+nl_dvector_print(UD, n, NULL);
 }
 
-void mda_chol_solve( size_t n, size_t *IU, size_t *JU, size_t *P, double *UN,
+
+
+
+
+
+
+void mda_chol_solve(size_t n, size_t *IU, size_t *JU, size_t *P, double *UN,
   double *UD, double *b, double *x)
 {
   size_t i, k, j;
 
   memcpy(x, b, n*sizeof(double));
 
-  /* яЁ ьющ їюф */
+  /* прямой ход */
+
   for(i = j = 0; i < n; i++)
   {
     while(j < IU[i + 1])
     {
       k = JU[j];
-      x[k] -= UN[j]*x[i];
+      x[P[k]] -= UN[j]*x[P[i]];
       j++;
     }
-    x[i] *= UD[i];
+    x[P[i]] *= UD[i];
   }
 
-  /* юсЁрЄэ√щ їюф */
+  /* обратный ход */
+
   for(i = n - 1, j = IU[n]; i > 0; i--)
   {
     while(j >= IU[i - 1] + 1)
     {
       k = JU[j - 1];
-      x[i - 1] -= UN[j - 1]*x[k];
+      x[P[i - 1]] -= UN[j - 1]*x[P[k]];
       j--;
     }
   }

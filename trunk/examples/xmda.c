@@ -48,13 +48,13 @@ int main()
   printf("\nДиагональные элементы матрицы A:\n");
   nl_dvector_print(SD, n, 0);
 
-  // Конвертируем представление в полное и вызываем алгоритм MDA
+  // Конвертируем представление в полное и вызываем алгоритм mda
 
   mda_create(n, nz, &IA, &JA, &D, &P, &IP, &M, &L);
   mda_convert(n, IS, JS, IA, JA, D, P, IP);
   unz = mda_order(n, IA, JA, M, L, D, P, IP);
 
-  printf("\nПерестановка, найденная методом MDA:\n");
+  printf("\nПерестановка, найденная методом mda:\n");
   nl_xvector_print(P, n, NULL);
   printf("\nОбратная перестановка:\n");
   nl_xvector_print(IP, n, NULL);
@@ -62,7 +62,7 @@ int main()
   // Применяем перестановку к матрице A:
   
   sp_create_sym(n, nz, &IB, &JB, &BN, &BD);
-  sp_permute_sym(n, IS, JS, IB, JB, SN, SD, BN, BD, IP);
+  sp_permute_sym(IS, JS, SN, SD, n, IP, IB, JB, BN, BD);
 
   printf("\nНаддиагональные элементы после перестановки:\n");
   sp_print_list(IB, JB, BN, n, n, NULL, NULL);
@@ -75,7 +75,7 @@ int main()
   sp_create_sym(n, unz, &IU, &JU, &UN, &UD);
   
   sp_chol_symb(IB, JB, n, IU, JU, unz, xwork);
-  sp_chol_num(IB, JB, BN, BD, IU, JU, n, UN, DINV, xwork);
+  sp_chol_num(IB, JB, BN, BD, IU, JU, n, UN, DINV);
 
   printf("\nВерхнетреугольная часть матрицы U:\n");
   sp_print_list(IU, JU, UN, n, n, NULL, NULL);
@@ -88,7 +88,7 @@ int main()
 
   x = nl_dvector_create(n);
   for(k = 0; k < n; k++) 
-    x[k] = k;
+    x[k] = 10*k + 10;
 
   b = nl_dvector_create(n);
   sp_mult_col_sym(IS, JS, SN, SD, x, n, b);

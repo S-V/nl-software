@@ -519,7 +519,7 @@ void sp_order(size_t* IA, size_t* JA, double* AN, size_t m)
 }
 
 
-void sp_order_m(size_t* IA, size_t* JA, size_t m)
+void sp_order_profile(size_t* IA, size_t* JA, size_t m)
 {
   size_t i,z;
   for(i = 0; i < m; i++)
@@ -529,8 +529,6 @@ void sp_order_m(size_t* IA, size_t* JA, size_t m)
       nl_xvector_qsort(JA, z, *IA - 1);
   }
 }
-
-
 
 int sp_add_symb(
   size_t *IA, 
@@ -791,16 +789,16 @@ void sp_mult_num(size_t* IA, size_t* JA, double* AN, size_t* IB, size_t* JB, dou
 }
 
 void sp_permute_sym(
-	size_t n,
 	size_t *IA,
 	size_t *JA,
-	size_t *IB,
-	size_t *JB,
 	double *AN,
 	double *AD,
+	size_t n,
+	size_t *IP,
+	size_t *IB,
+	size_t *JB,
 	double *BN,
-	double *BD,
-	size_t *IP)
+	double *BD)
 {
 	size_t i, j, k, imin, imax;
 
@@ -836,9 +834,6 @@ void sp_permute_sym(
 	for(i = n; i > 0; i--) IB[i] = IB[i - 1];
 	IB[i] = 0;
 }
-
-
-
 
 int sp_gauss_seidel(size_t* IA, size_t* JA, double* AN, double* AD, double* b, size_t n, double f, double eps, int max_iter, double* x)
 {
@@ -889,8 +884,8 @@ int sp_gauss_seidel(size_t* IA, size_t* JA, double* AN, double* AD, double* b, s
 
 
 
-int sp_gauss_seidel_m(size_t* IA, size_t* JA, double* AN, double* b, size_t n, double f, double eps, int max_iter, double* x,
-  double *work)
+int sp_gauss_seidel_complete(size_t* IA, size_t* JA, double* AN, double* b, 
+  size_t n, double f, double eps, int max_iter, double* x, double *work)
 {
   size_t  i,j;
   int    iter;
@@ -957,9 +952,6 @@ label:;
 
   return iter;
 }
-
-
-
 
 
 int sp_conj(size_t *IA, size_t *JA, double *AN, double *b, size_t n, double eps, int max_iter, double *x, double *work)
@@ -1119,243 +1111,201 @@ int sp_conj_sym(size_t *IA, size_t *JA, double *AN, double *AD, double *b, size_
   return itr;
 }
 
-
-int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_t size_U, size_t *xwork)
+int sp_chol_symb(size_t* IA, size_t* JA, size_t n, size_t* IU, size_t* JU, size_t sizeU, 
+size_t *xwork)
 {
-  size_t  *IP = xwork;
-  size_t  i,j;
-  size_t  *pIA = IA;
-  size_t  *pJA = JA;
-  size_t  *pJU = JU;
-  size_t  min, last, nz = 0, nz_, max_in_i, l, je, t;
+  size_t *IP;
+  size_t i, j;
+  size_t min, max, last, nz, nz_prev, l, je, t;
 
-  /* засылка начальных условий */
+  IP = xwork;
+  nz = 0; /* счетчик элементов в JU */
+
   memset(IP, -1, sizeof(*IP)*n);
   memset(IU, -1, sizeof(*IU)*n);
 
-  /* внешний цикл по строкам матрицы A */
-  for(i = 0; i < n-1; i++)
-  {
-    nz_    = nz;
-    min    = n;
-    max_in_i= nz + n - i;
+  /* Цикл по строкам матрицы A */
 
-    /* копирование столбцовых индексов, соответствующих ненулевой строке i */
-    /* матрицы A, из массива JA в массив JU */
-    for(j = *pIA++; j < *pIA; j++)
+  for (i = 0; i < n - 1; i++)
+  {
+    nz_prev = nz;
+    min = n; /* Минимальный индекс ненулевого элемента в i-й строке */
+    max = nz + n - i;
+
+    /* Копирование столбцовых индексов, соответствующих i-й строке,
+       из массива JA в массив JU */
+
+    for (j = IA[i]; j < IA[i + 1]; j++)
     {
-      if(++nz > size_U)
-      {
-        /*nl_error(nl_err_inconsistent_size, 0);*/
+      if (nz >= sizeU)
         return 0;
-      }
-      t = *pJU++ = *pJA++;
+
+      t = JU[nz] = JA[j];
+      nz++;
+
       if(t < min)
         min = t;
+
       IU[t] = i;
     }
 
-    /* выделение номера последней строки, связанной со столбцом i */
-    last = IP[i];
-    if(last != -1)
+    last = IP[i]; /* Номер последней строки, связанной с i-м столбцом */
+
+    if (last != -1)
     {
       l = last;
       do
       {
         l = IP[l];
-        je = (l+1 == i)? nz_ : IU[l+1];
+        je = (l + 1 == i) ? nz_prev : IU[l + 1];
         IU[i] = i;
 
-        /* обработка строки l матрицы U (копирование индексов, */
-        /* если такого индекса еще не было) */
-        for(j = IU[l]; j < je; j++)
+        /* Обработка l-й строки матрицы U 
+           (копирование индексов, если такого индекса еще не было) */
+
+        for (j = IU[l]; j < je; j++)
         {
           t = JU[j];
-          if(IU[t] != i)
+          if (IU[t] != i)
           {
-            if(++nz > size_U)
-            {
-              /*nl_error(nl_err_inconsistent_size, 0);*/
+            if(nz >= sizeU)
               return 0;
-            }
-            *pJU++  = t;
+
+            JU[nz] = t;
+            nz++;
+
             if(t < min)
               min = t;
-            IU[t]  = i;
+
+            IU[t] = i;
           }
         }
-      } while(nz < max_in_i && l != last);
+      } 
+      while (nz < max && l != last);
     }
-    /* если строка оказалась не пустой */
-    if(min != n)
+
+    /* Если строка оказалась не пустой */
+
+    if (min != n)
     {
       l = IP[min];
-      if(l != -1)
+      if (l != -1)
       {
-        IP[i]  = IP[l];
-        IP[l]  = i;
-      } else
+        IP[i] = IP[l];
+        IP[l] = i;
+      } 
+      else
       {
-        IP[i]  = IP[min] = i;
+        IP[i] = IP[min] = i;
       }
     }
-    IU[i] = nz_;
+    IU[i] = nz_prev;
   }
+
   IU[n] = IU[n - 1] = nz;
 
   return 1;
 }
 
-
 void sp_chol_num(size_t* IA, size_t* JA, double* AN, double* AD, size_t* IU, size_t* JU, size_t n, 
-double* UN, double* DINV, size_t *xwork)
+double* UN, double* DINV)
 {
-  size_t  *IP  = xwork;
-  size_t  *IUP = xwork + n;
-  size_t  i,j;
-  size_t  *pIU = IU;
-  size_t  *pJU;
-  double  *pD   = DINV;
-  double  *pUN;
-  double  UM;
-  size_t  zU, last, ln, l, IUC, IUD, jj;
+  size_t i, j, k, ki, ij, kj, ijU;
 
-  /* засылка начальных условий */
-  memset(IP, -1, sizeof(*IP)*n);
+  /*
+     for k = 1:(n - 1)
+         for i = (k + 1):n
+             A(k, i) = A(k, i)/A(k, k);
+             A(i, i) = A(i, i) - A(k, i)^2*A(k, k);
+             for j = (i + 1):n
+                 A(i, j) = A(i, j) - A(k, i)*A(k, j);
+             end;
+         end;
+     end;
+  */
 
+  /* Инициализируем значения элементов матрицы U 
+     соответствующими значениями из A */
 
-  /* главный цикл обработки строк матриц A и U */
-  for(i = 0; i < n; i++)
+  for (k = 0; k < n; k++)
+    DINV[k] = AD[k];
+
+  for (k = 0; k < IA[n]; k++)
+     UN[k] = 0;
+
+  for (i = 0; i < n - 1; i++)
   {
-    zU = *pIU++;
+     for (ij = IA[i], ijU = IU[i]; ij < IA[i + 1]; ij++)
+     {
+        while (JU[ijU] < JA[ij])
+           ijU++;
 
-    if(zU < *pIU)
-    {
-      /* засылка нулей в компоненты массива DINV, которые */
-      /* соответствуют ненулевым элементам строки i матрицы U. */
-      pJU = JU + zU;
-      for(j = zU; j < *pIU; j++)
-        DINV[*pJU++] = 0.;
-
-      for(j = *IA++;j < *IA; j++)
-        DINV[*JA++] = *AN++;
-    }
-    *pD = *AD++;
-
-    /* выявление строки матрицы A, имеющей ненулевой элемент */
-    /* в столбце i */
-    last  = IP[i];
-    if(last != -1)
-    {
-      ln = IP[last];
-      do
-      {
-        l  = ln;
-        ln  = IP[l];
-        IUC = IUP[l];
-        IUD = IU[l+1];
-
-        /* умножение соответствующих ненулевых элементов строки */
-        /* l матрицы A на коэффициент и вычитаение */
-        UM  = UN[IUC]*DINV[l];
-        pJU = JU + IUC;
-        pUN = UN + IUC;
-        for(j = IUC; j < IUD; j++)
-          DINV[*pJU++] -= *pUN++ * UM;
-
-        UN[IUC] = UM;
-        IUP[l]  = ++IUC;
-
-        if(IUC != IUD)
-        {
-          j = JU[IUC];
-          jj = IP[j];
-          if(jj == -1)
-          {
-            IP[l] = IP[j] = l;
-          } else
-          {
-            IP[l] = IP[jj];
-            IP[jj]= l;
-          }
-        }
-      } while(l != last);
-    }
-
-    /* все строки, связанные со столбцом i, уже обработаны */
-    *pD = 1./ (*pD);
-    pD++;
-
-    if(zU < *pIU)
-    {
-      pJU = JU + zU;
-      pUN = UN + zU;
-      for(j = zU; j < *pIU; j++)
-        *pUN++ = DINV[*pJU++];
-
-      j = JU[zU];
-      jj = IP[j];
-      if(jj != -1)
-      {
-        IP[i] = IP[jj];
-        IP[jj]= i;
-      } else
-      {
-        IP[j] = IP[i] = i;
-      }
-    }
-    IUP[i] = zU;
-
+        UN[ijU] = AN[ij];
+     }
   }
 
-}
+  /* Основной цикл */
 
+  for (k = 0; k < n - 1; k++)
+  {
+     for (ki = IU[k]; ki < IU[k + 1]; ki++)
+     {
+        i = JU[ki];
+        UN[ki] /= DINV[k];                /* U[k][i] /= U[k][k]; */
+        DINV[i] -= UN[ki]*UN[ki]*DINV[k]; /* U[i][i] -= U[k][i]^2*U[k][k]; */
+        for (ij = IU[i], kj = IU[k]; kj < IU[k + 1]; kj++)
+        {
+           j = JU[kj];
+           if (j > i)
+           {
+              while (JU[ij] < j)
+                 ij++;
+
+              UN[ij] -= UN[ki]*UN[kj]; /* U[i][j] -= U[k][i]*U[k][j] */
+           }
+        }
+     }
+  }
+
+  for (k = 0; k < n; k++)
+    DINV[k] = 1/DINV[k];
+}
 
 
 void sp_chol_solve(size_t* IU, size_t* JU, double* UN, double* DINV, double* b, size_t n, double* x)
 {
-  size_t  i, j;
-  double *px = x;
+  size_t  i, j, k;
 
-  double *pDINV = DINV;
+  for (j = 0; j < n; j++)
+     x[j] = b[j];
 
-  size_t *pIU = IU;
-  size_t *pJU = JU;
-  size_t *p_end;
-  double *pUN = UN;
-  double xx;
+  /* Прямой ход */
 
-  /* засылка начальных значений в промежуточный вектор Z */
-  memcpy(x, b, sizeof(*x)*n);
-
-  /* цикл вычисления компонент промежуточных векторов Z и W (прямой ход) */
-  for(i = 0; i < n-1; i++)
+  k = 0;
+  for (i = 0; i < n; i++)
   {
-    xx = *px;
-    for(j = *pIU++; j < *pIU; j++)
-      x[*pJU++] -= *pUN++ * xx;
-
-    *px++ *=  *pDINV++;
-  }
-  *px *= *pDINV;
-
-  /* цикл вычисления компонент вектора решения X (обратная подстановка) */
-  pJU  = JU + IU[n-1]-1;
-  pUN = UN + IU[n-1]-1;
-  px  = x  + n-2;
-  for(i = n-1; i != 0; i--)
-  {
-    xx = *px;
-    p_end = JU + IU[i-1];
-    while(pJU >= p_end)
+    for (j = IU[i]; j < IU[i + 1]; j++)
     {
-      xx -= *pUN-- * x[*pJU--];
+       x[JU[j]] -= UN[k]*x[i];
+       k++;
     }
-    *px--  = xx;
+
+    x[i] *= DINV[i];
+  }
+
+  /* Обратная подстановка */
+
+  k = IU[n] - 1;
+
+  for(i = n - 1; i > 0; i--)
+  {
+    for (j = IU[i]; j > IU[i - 1]; j--)
+    {
+       x[i - 1] -= UN[k]*x[JU[j - 1]];
+       k--;
+    }
   }
 }
-
-
 
 void sp_row_nz_sym(size_t* IA, size_t* JA, size_t n, size_t* nz)
 {
@@ -1384,7 +1334,7 @@ void sp_colperm_sym(size_t* IA, size_t* JA, size_t n, size_t* p, size_t *xwork)
   for(i = 0; i < n; i++)
     s[i] = i;
 
-  nl_xvector_qsort_x(p, s, 0, n-1);
+  nl_xvector_qsort_x(p, s, 0, n - 1);
 
   for(i = 0; i < n; i++)
     p[*ps++] = i;
@@ -1488,32 +1438,26 @@ void nl_xvector_qsort_d(size_t *v, double *x, size_t first, size_t last)
     stack_node stack[STACK_SIZE];
     stack_node *top = stack + 1;
     
-printf("I'm here!\n");
-
     while (STACK_NOT_EMPTY) 
     {
       size_t *left_ptr;
       size_t *right_ptr;
 
       size_t mid = (hi + lo) / 2;
-printf("11\n");
       pivot_buffer = v[mid];
       
       if(pivot_buffer < v[lo])
       {
-printf("12\n");
         SWAP_DOUBLE(mid, lo);
         pivot_buffer = v[lo];
       }
       if(v[hi] < pivot_buffer) 
       {
-printf("13\n");
         SWAP_DOUBLE(hi, mid);
         pivot_buffer = v[hi];
 
         if(pivot_buffer < v[lo])
         {
-printf("14\n");
           SWAP_DOUBLE(mid, lo);
         }
       } 
@@ -1521,23 +1465,18 @@ printf("14\n");
       left_ptr  = v + lo + 1;
       right_ptr = v + hi - 1;
     
-printf("15\n");
       do 
       {
-printf("16\n");
         while(*left_ptr < pivot_buffer)
           left_ptr++;
       
-printf("16.1\n");
         while(pivot_buffer < *right_ptr)
           right_ptr--;
       
-printf("16.2\n");
         if (left_ptr < right_ptr) 
         {
           size_t q = left_ptr - v;
           size_t w = right_ptr - v;
-printf("17\n");
           SWAP_DOUBLE(q, w);
           left_ptr++;
           right_ptr--;
@@ -1554,7 +1493,6 @@ printf("17\n");
       
       if (((right_ptr - v)- lo) <= MAX_THRESH) 
       {
-printf("18\n");
         if ((hi - (left_ptr - v)) <= MAX_THRESH)
           POP (lo, hi); 
         else
@@ -1572,7 +1510,6 @@ printf("18\n");
             PUSH (left_ptr - v, hi);
             hi = right_ptr - v;
           }
-printf("19\n");
     }
   }
   {
@@ -1581,8 +1518,6 @@ printf("19\n");
     size_t tmp_ptr = first;
     size_t thresh = NL_MIN (end_ptr, first + MAX_THRESH);
     
-printf("2 I'm here!\n");
-
     for (run_ptr = tmp_ptr + 1; run_ptr <= thresh; run_ptr++)
       if(v[run_ptr] < v[tmp_ptr])
         tmp_ptr = run_ptr;
